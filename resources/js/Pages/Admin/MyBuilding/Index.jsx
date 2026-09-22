@@ -233,9 +233,8 @@ export default function Index({ pageTitle = 'MyBuilding', product = null, rows =
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex items-center justify-between gap-4">
+            <div className="mb-6 flex items-center justify-end gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">MyBuilding</h1>
                     <p className="text-sm text-slate-500">
                         Licences for the building-management product, and the building each one creates in the customer&apos;s installation.
                     </p>

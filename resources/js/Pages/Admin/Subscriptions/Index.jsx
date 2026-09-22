@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
@@ -37,41 +38,43 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        id="subscriptionsSearchForm"
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full max-w-sm">
+            <div id="subscriptionsTable" className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <form
+                            id="subscriptionsSearchForm"
+                            method="GET"
+                            action={routes?.index}
+                            className="w-full max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search subscriptions..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (subscriptions.length > 0 ? 1 : 0)} – {pagination?.to ?? subscriptions.length} of {pagination?.total ?? subscriptions.length} subscriptions
+                        </span>
+                    </div>
+                    <a
+                        href={routes?.create}
+                        data-native="true"
+                        className="ui-btn-primary"
+                    >
+                        New Subscription
+                    </a>
                 </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className="ui-btn-primary"
-                >
-                    New Subscription
-                </a>
-            </div>
 
-            <div id="subscriptionsTable">
                 <DataTable
+                    framed={false}
                     rows={subscriptions}
                     emptyMessage="No subscriptions yet."
                     columns={[
@@ -192,32 +195,11 @@ export default function Index({
                     )}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                        {pagination?.previous_url ? (
-                            <a
-                                href={pagination.previous_url}
-                                data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                            >
-                                Previous
-                            </a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                        )}
-                        {pagination?.next_url ? (
-                            <a
-                                href={pagination.next_url}
-                                data-native="true"
-                                className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                            >
-                                Next
-                            </a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                        )}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="subscriptions"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

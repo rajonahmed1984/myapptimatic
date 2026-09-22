@@ -127,6 +127,8 @@ Route::middleware([
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/chatbot-leads', [ChatbotLeadViewController::class, 'index'])->name('chatbot-leads.index');
     Route::delete('/chatbot-leads/{id}', [ChatbotLeadViewController::class, 'destroy'])->name('chatbot-leads.destroy');
+    Route::post('/chatbot-leads/{id}/toggle-read', [ChatbotLeadViewController::class, 'toggleRead'])->name('chatbot-leads.toggle-read');
+    Route::post('/chatbot-leads/mark-all-read', [ChatbotLeadViewController::class, 'markAllRead'])->name('chatbot-leads.mark-all-read');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])
         ->whereNumber('customer')
         ->name('customers.show');
@@ -369,6 +371,10 @@ Route::middleware([
             ->whereIn('role', ['master_admin', 'sub_admin', 'support']);
         Route::get('users/{role}/create', fn (string $role) => redirect()->route('admin.users.create', ['role' => $role]))
             ->whereIn('role', ['master_admin', 'sub_admin', 'support']);
+        Route::get('/expense-categories', fn (Request $request) => redirect()->route('admin.expenses.categories.index', $request->query()))
+            ->name('expense-categories.legacy');
+        Route::get('/income-categories', fn (Request $request) => redirect()->route('admin.income.categories.index', $request->query()))
+            ->name('income-categories.legacy');
     });
 
       Route::middleware('admin.role:master_admin')

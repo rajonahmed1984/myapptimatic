@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { formatDate } from '@/utils/datetime';
 import SearchableSelect from '../../../../Components/SearchableSelect';
 import DataTable from '../../../../Components/Table/DataTable';
+import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 import RowActionSheet from '../../../../Components/Mobile/RowActionSheet';
 
@@ -96,29 +97,6 @@ export default function Index({
         <>
             <Head title={pageTitle ?? 'Recurring Expenses'} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">Recurring expenses</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <a
-                        href={routes?.create}
-                        data-native="true"
-                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                        Add recurring
-                    </a>
-                    <a
-                        href={routes?.back}
-                        data-native="true"
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                    >
-                        Back
-                    </a>
-                </div>
-            </div>
-
             {/* Stats Cards */}
             <div className="mb-6 grid gap-4 md:grid-cols-3">
                 <div className="card px-4 py-3 border border-emerald-200 bg-emerald-50/40">
@@ -141,11 +119,33 @@ export default function Index({
                 </div>
             </div>
 
-            <div className="overflow-hidden">
-                <div className="rounded-2xl border border-slate-300 bg-white/80 px-3 py-3 md:overflow-x-auto">
-                    <DataTable
-                        rows={hasRows ? recurringExpenses.data : []}
-                        emptyMessage="No recurring expenses yet."
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        Showing {recurringExpenses?.from ?? 1} – {recurringExpenses?.to ?? (recurringExpenses?.data || []).length} of {recurringExpenses?.total ?? (recurringExpenses?.data || []).length} recurring expenses
+                    </span>
+                    <div className="flex items-center gap-3">
+                        <a
+                            href={routes?.back}
+                            data-native="true"
+                            className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            Back
+                        </a>
+                        <a
+                            href={routes?.create}
+                            data-native="true"
+                            className="bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500"
+                        >
+                            Add recurring
+                        </a>
+                    </div>
+                </div>
+
+                <DataTable
+                    framed={false}
+                    rows={hasRows ? recurringExpenses.data : []}
+                    emptyMessage="No recurring expenses yet."
                         columns={[
                             { key: 'id', header: 'ID', cellClassName: 'font-semibold text-slate-900', render: (recurring) => recurring.id },
                             {
@@ -283,31 +283,11 @@ export default function Index({
                             </MobileCard>
                         )}
                     />
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                    {(recurringExpenses?.links ?? []).map((link, idx) =>
-                        link.url ? (
-                            <a
-                                key={`${idx}-${link.label}`}
-                                href={link.url}
-                                data-native="true"
-                                className={`rounded-full border px-3 py-1 ${
-                                    link.active
-                                        ? 'border-slate-900 bg-slate-900 text-white'
-                                        : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ) : (
-                            <span
-                                key={`${idx}-${link.label}`}
-                                className="rounded-full border border-slate-200 px-3 py-1 text-slate-300"
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ),
-                    )}
-                </div>
+                <Pagination
+                    pagination={recurringExpenses}
+                    label="recurring expenses"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
 
             {advanceModal.open ? (

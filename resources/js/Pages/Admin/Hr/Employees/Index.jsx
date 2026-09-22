@@ -2,6 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../../Components/Table/DataTable';
+import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 export default function Index({
@@ -21,29 +22,41 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-6 overflow-hidden">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-                    <form
-                        method="GET"
-                        action={routes?.index}
-                        className="flex-1 max-w-sm"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <form
+                            method="GET"
+                            action={routes?.index}
+                            className="w-full max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search employees..."
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            />
+                        </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (employees.length > 0 ? 1 : 0)} – {pagination?.to ?? employees.length} of {pagination?.total ?? employees.length} employees
+                        </span>
+                    </div>
+                    <a
+                        href={routes?.create}
+                        data-native="true"
+                        className="bg-teal-600 rounded-full text-xs px-3.5 py-1.5 font-semibold text-white hover:bg-teal-500 shadow-sm transition"
                     >
-                        <input
-                            type="text"
-                            name="search"
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                            placeholder="Search employees..."
-                            className="w-full h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                    </form>
-                    <a href={routes?.create} data-native="true" className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Add employee</a>
+                        Add employee
+                    </a>
                 </div>
                 <DataTable
+                    framed={false}
                     rows={employees}
                     emptyMessage="No employees found."
                     columns={[
@@ -170,12 +183,11 @@ export default function Index({
                     )}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                        <a href={pagination?.previous_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.previous_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Previous</a>
-                        <a href={pagination?.next_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.next_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Next</a>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="employees"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import Pagination from '../../../Components/Table/Pagination';
 
 const statusClass = (status) => {
     if (status === 'accepted') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -91,7 +92,7 @@ function ReviewPanel({ request, csrfToken }) {
     );
 }
 
-export default function Index({ filters = {}, counts = {}, requests = [], currency = 'BDT' }) {
+export default function Index({ filters = {}, counts = {}, requests = [], pagination = {}, currency = 'BDT' }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
     const indexUrl = '/admin/cancellation-requests';
     const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
@@ -103,59 +104,58 @@ export default function Index({ filters = {}, counts = {}, requests = [], curren
         <>
             <Head title="Cancellation Requests" />
 
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold text-slate-900">Cancellation Requests</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                    Accepting stops future invoices. Anything already invoiced stays due.
-                </p>
-            </div>
-
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <form
-                    method="GET"
-                    action={indexUrl}
-                    className="flex-1"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        submitSearch();
-                    }}
-                >
-                    <input type="hidden" name="status" value={filters?.status || 'pending'} />
-                    <input
-                        type="text"
-                        name="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search by customer, reason or ID..."
-                        className="ui-input w-full max-w-sm"
-                    />
-                </form>
-
-                <div className="flex items-center gap-2 text-xs">
-                    {TABS.map((tab) => (
-                        <a
-                            key={tab.key}
-                            href={`${indexUrl}?status=${tab.key}`}
-                            data-native="true"
-                            className={
-                                (filters?.status || 'pending') === tab.key
-                                    ? 'rounded-full bg-slate-900 px-3 py-1 text-white'
-                                    : 'rounded-full border border-slate-300 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600'
-                            }
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form
+                            method="GET"
+                            action={indexUrl}
+                            className="min-w-0 flex-1 max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
                         >
-                            {tab.label}
-                            {counts?.[tab.key] ? ` (${counts[tab.key]})` : ''}
-                        </a>
-                    ))}
-                </div>
-            </div>
+                            <input type="hidden" name="status" value={filters?.status || 'pending'} />
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search by customer, reason or ID..."
+                                className="ui-input w-full"
+                            />
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? requests.length} of {pagination?.total ?? requests.length} requests
+                        </span>
+                    </div>
 
-            {requests.length === 0 ? (
-                <div className="card p-6 text-sm text-slate-500">No cancellation requests here.</div>
-            ) : (
-                <div className="space-y-4">
-                    {requests.map((request) => (
-                        <div key={request.id} className="card p-5">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {TABS.map((tab) => (
+                            <a
+                                key={tab.key}
+                                href={`${indexUrl}?status=${tab.key}`}
+                                data-native="true"
+                                className={
+                                    (filters?.status || 'pending') === tab.key
+                                        ? 'rounded-full bg-slate-900 px-3 py-1 text-white'
+                                        : 'rounded-full border border-slate-300 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                                }
+                            >
+                                {tab.label}
+                                {counts?.[tab.key] ? ` (${counts[tab.key]})` : ''}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+
+                {requests.length === 0 ? (
+                    <div className="p-6 text-sm text-slate-500">No cancellation requests here.</div>
+                ) : (
+                    <div className="divide-y divide-slate-200">
+                        {requests.map((request) => (
+                            <div key={request.id} className="p-5">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-2">
@@ -232,10 +232,17 @@ export default function Index({ filters = {}, counts = {}, requests = [], curren
                                     </p>
                                 )}
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <Pagination
+                    pagination={pagination}
+                    label="requests"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
+            </div>
         </>
     );
 }

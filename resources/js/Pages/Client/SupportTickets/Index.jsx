@@ -9,11 +9,7 @@ export default function Index({ tickets = [], routes = {} }) {
         <>
             <Head title="Support Tickets" />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Support Tickets</h1>
-                    <p className="mt-1 text-sm text-slate-500">Open a ticket or reply to existing requests.</p>
-                </div>
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
                 <a href={routes.create} data-native="true" className="rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white">
                     New Ticket
                 </a>

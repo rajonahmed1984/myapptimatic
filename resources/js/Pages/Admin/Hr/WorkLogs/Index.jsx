@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import Pagination from '../../../../Components/Table/Pagination';
 
 export default function Index({
     pageTitle = 'Work Logs',
@@ -92,44 +93,50 @@ export default function Index({
                 <KpiCard title="Est. salary (page)" value={summary.estimatedSalary} />
             </div>
 
-            <div className="card p-6 overflow-hidden">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <h3 className="font-semibold text-slate-800 text-sm">Daily Work Logs</h3>
+                    <span className="text-xs text-slate-500">
+                        Showing {pagination?.from ?? (dailyLogs.length > 0 ? 1 : 0)} – {pagination?.to ?? dailyLogs.length} of {pagination?.total ?? dailyLogs.length} work logs
+                    </span>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-sm text-slate-700">
                         <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 border-b border-slate-200">
-                                <th className="py-2 px-3">Employee</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Sessions</th>
-                                <th className="py-2 px-3 whitespace-nowrap">First Start &gt; Last Activity</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Required &gt; Active Time</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Coverage</th>
-                                <th className="py-2 px-3 whitespace-nowrap text-right">Est. Salary</th>
+                            <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-500 border-b border-slate-200 bg-slate-50/50">
+                                <th className="py-2.5 px-4">Employee</th>
+                                <th className="py-2.5 px-4 whitespace-nowrap text-right">Sessions</th>
+                                <th className="py-2.5 px-4 whitespace-nowrap">First Start &gt; Last Activity</th>
+                                <th className="py-2.5 px-4 whitespace-nowrap text-right">Required &gt; Active Time</th>
+                                <th className="py-2.5 px-4 whitespace-nowrap text-right">Coverage</th>
+                                <th className="py-2.5 px-4 whitespace-nowrap text-right">Est. Salary</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100">
                             {dailyLogs.length === 0 ? (
-                                <tr><td colSpan={6} className="py-3 px-3 text-center text-slate-500">No work logs.</td></tr>
+                                <tr><td colSpan={6} className="py-6 px-4 text-center text-slate-500">No work logs.</td></tr>
                             ) : dailyLogs.map((log, index) => (
-                                <tr key={`${log.employee_name}-${log.work_date}-${index}`} className="border-b border-slate-100">
-                                    <td className="py-2 px-3 font-medium text-slate-900">{log.employee_name}</td>
-                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.sessions_count}</td>
-                                    <td className="py-2 px-3 whitespace-nowrap tabular-nums">{log.first_started_at} &gt; {log.last_activity_at}</td>
-                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums">{log.required_duration} &gt; {log.active_duration}</td>
-                                    <td className="py-2 px-3 text-right">
+                                <tr key={`${log.employee_name}-${log.work_date}-${index}`} className="hover:bg-slate-50/60 transition">
+                                    <td className="py-2.5 px-4 font-semibold text-slate-900">{log.employee_name}</td>
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap tabular-nums">{log.sessions_count}</td>
+                                    <td className="py-2.5 px-4 whitespace-nowrap tabular-nums text-slate-600">{log.first_started_at} &gt; {log.last_activity_at}</td>
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap tabular-nums text-slate-600">{log.required_duration} &gt; {log.active_duration}</td>
+                                    <td className="py-2.5 px-4 text-right">
                                         <CoverageBadge value={log.coverage_percent} />
                                     </td>
-                                    <td className="py-2 px-3 text-right whitespace-nowrap tabular-nums font-semibold text-slate-900">{log.currency} {log.estimated_amount}</td>
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap tabular-nums font-semibold text-slate-900">{log.currency} {log.estimated_amount}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                        <a href={pagination?.previous_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.previous_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Previous</a>
-                        <a href={pagination?.next_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.next_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Next</a>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="work logs"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

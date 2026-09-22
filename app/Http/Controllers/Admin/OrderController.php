@@ -13,6 +13,7 @@ use App\Services\AdminNotificationService;
 use App\Services\BillingService;
 use App\Services\ClientNotificationService;
 use App\Services\MyBuildingProvisioner;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -582,11 +583,11 @@ class OrderController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'has_pages' => $orders->hasPages(),
-                'previous_url' => $orders->previousPageUrl(),
-                'next_url' => $orders->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make(
+                $orders,
+                route('admin.orders.index'),
+                ['status' => $status, 'search' => $search]
+            ),
         ];
     }
 

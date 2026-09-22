@@ -28,8 +28,6 @@ export default function Dashboard({ affiliate = {}, stats = {}, routes = {} }) {
             <Head title="Affiliate Dashboard" />
 
             <div className="mb-6">
-                <div className="section-label">Affiliate Program</div>
-                <h1 className="mt-2 text-2xl font-semibold text-slate-900">Your affiliate dashboard</h1>
             </div>
 
             {affiliate.status !== 'active' ? (

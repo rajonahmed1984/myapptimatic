@@ -13,6 +13,7 @@ use App\Models\PayrollAuditLog;
 use App\Models\PayrollItem;
 use App\Models\PayrollPeriod;
 use App\Services\PayrollService;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,11 +110,7 @@ class PayrollController extends Controller
                     'finalize' => route('admin.hr.payroll.finalize', $period),
                 ],
             ])->values(),
-            'pagination' => [
-                'previous_url' => $periods->previousPageUrl(),
-                'next_url' => $periods->nextPageUrl(),
-                'has_pages' => $periods->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($periods),
             'routes' => [
                 'index' => route('admin.hr.payroll.index'),
                 'generate' => route('admin.hr.payroll.generate'),
@@ -725,11 +722,7 @@ class PayrollController extends Controller
                     ],
                 ];
             })->values(),
-            'pagination' => [
-                'previous_url' => $items->previousPageUrl(),
-                'next_url' => $items->nextPageUrl(),
-                'has_pages' => $items->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($items),
             'paymentMethods' => $paymentMethods,
             'today' => now()->format(config('app.date_format', 'd-m-Y')),
             'routes' => [

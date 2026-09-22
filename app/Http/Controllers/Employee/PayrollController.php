@@ -8,6 +8,7 @@ use App\Models\EmployeePayout;
 use App\Models\EmployeeWorkSession;
 use App\Models\PaidHoliday;
 use App\Models\PayrollItem;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -240,16 +241,7 @@ class PayrollController extends Controller
                     'currency' => $item->currency,
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $items->currentPage(),
-                'last_page' => $items->lastPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'from' => $items->firstItem(),
-                'to' => $items->lastItem(),
-                'prev_page_url' => $items->previousPageUrl(),
-                'next_page_url' => $items->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($items),
         ]);
     }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import Pagination from '../../../Components/Table/Pagination';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const BTN = {
@@ -41,51 +42,55 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-6">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                    {logTypes.map((type) => (
-                        <a
-                            key={type.slug}
-                            href={type.href}
-                            data-native="true"
-                            className={
-                                type.active
-                                    ? BTN.primary
-                                    : BTN.secondary
-                            }
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-xs">
+                    <div className="flex flex-wrap gap-2">
+                        {logTypes.map((type) => (
+                            <a
+                                key={type.slug}
+                                href={type.href}
+                                data-native="true"
+                                className={
+                                    type.active
+                                        ? BTN.primary
+                                        : BTN.secondary
+                                }
+                            >
+                                {type.label}
+                            </a>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <form
+                            method="GET"
+                            action={routes?.current}
+                            className="flex items-center gap-2"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
                         >
-                            {type.label}
-                        </a>
-                    ))}
-                    <form
-                        method="GET"
-                        action={routes?.current}
-                        className="ml-auto flex items-center gap-2"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <input
-                            type="text"
-                            name="search"
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                            placeholder="Search logs..."
-                            className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                    </form>
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search logs..."
+                                className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            />
+                        </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (logs.length > 0 ? 1 : 0)} – {pagination?.to ?? logs.length} of {pagination?.total ?? logs.length} log entries
+                        </span>
+                    </div>
                 </div>
 
-            </div>
-
-            <div className="mt-6 card overflow-x-auto">
-                {logs.length === 0 ? (
-                    <div className="px-6 py-8 text-sm text-slate-500">No log entries yet.</div>
-                ) : (
-                    <>
+                <div className="overflow-x-auto">
+                    {logs.length === 0 ? (
+                        <div className="px-6 py-8 text-sm text-slate-500 text-center">No log entries yet.</div>
+                    ) : (
                         <table className="w-full min-w-[900px] text-left text-sm">
-                            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
+                            <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500 bg-slate-50/50">
                                 <tr>
                                     <th className="px-4 py-3">Date</th>
                                     <th className="px-4 py-3">User</th>
@@ -94,61 +99,35 @@ export default function Index({
                                     <th className="px-4 py-3">Message</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-slate-100">
                                 {logs.map((log) => (
-                                    <tr key={log.id} className="border-b border-slate-100">
-                                        <td className="px-4 py-3 text-slate-500">
+                                    <tr key={log.id} className="hover:bg-slate-50/60 transition">
+                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                                             <DateTimeText value={log.created_at_display} mode="datetime" />
                                         </td>
-                                        <td className="px-4 py-3 text-slate-700">{log.user_name}</td>
-                                        <td className="px-4 py-3 text-slate-500">{log.ip_address || '—'}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${levelClasses(log.level)}`}>
+                                        <td className="px-4 py-3 text-slate-700 whitespace-nowrap font-medium">{log.user_name}</td>
+                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{log.ip_address || '—'}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${levelClasses(log.level)}`}>
                                                 {log.level_label}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-slate-600">
                                             <div className="font-semibold text-slate-800">{log.message}</div>
-                                            {log.context_json ? <div className="mt-1 text-xs text-slate-500">{log.context_json}</div> : null}
+                                            {log.context_json ? <div className="mt-1 text-xs text-slate-500 font-mono">{log.context_json}</div> : null}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                    )}
+                </div>
 
-                        {pagination?.has_pages ? (
-                            <div className="flex items-center justify-between px-4 py-3 text-sm text-slate-500">
-                                <div>
-                                    Showing {pagination?.count ?? 0} of {pagination?.total ?? 0}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {pagination?.previous_url ? (
-                                        <a
-                                            href={pagination.previous_url}
-                                            data-native="true"
-                                            className={BTN.secondary}
-                                        >
-                                            Previous
-                                        </a>
-                                    ) : (
-                                        <span className="rounded-full border border-slate-100 px-3 py-1 text-slate-300">Previous</span>
-                                    )}
-                                    {pagination?.next_url ? (
-                                        <a
-                                            href={pagination.next_url}
-                                            data-native="true"
-                                            className={BTN.secondary}
-                                        >
-                                            Next
-                                        </a>
-                                    ) : (
-                                        <span className="rounded-full border border-slate-100 px-3 py-1 text-slate-300">Next</span>
-                                    )}
-                                </div>
-                            </div>
-                        ) : null}
-                    </>
-                )}
+                <Pagination
+                    pagination={pagination}
+                    label="log entries"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

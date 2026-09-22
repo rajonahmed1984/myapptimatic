@@ -77,9 +77,7 @@ class IncomeUiParityTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.income.create'))
-            ->assertOk()
-            ->assertSee('data-page=')
-            ->assertSee('Admin\\/Income\\/Create', false);
+            ->assertRedirect(route('admin.income.index', ['create' => 1]));
 
         $client = User::factory()->create([
             'role' => Role::CLIENT,
@@ -98,9 +96,9 @@ class IncomeUiParityTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->from(route('admin.income.create'))
+            ->from(route('admin.income.index'))
             ->post(route('admin.income.store'), [])
-            ->assertRedirect(route('admin.income.create'))
+            ->assertRedirect(route('admin.income.index'))
             ->assertSessionHasErrors([
                 'income_category_id',
                 'title',

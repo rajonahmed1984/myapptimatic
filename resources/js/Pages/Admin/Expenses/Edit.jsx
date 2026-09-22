@@ -23,22 +23,19 @@ export default function Edit({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">Edit one-time expense</div>
+            <div className="card max-w-3xl overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                    <div className="text-sm font-semibold text-slate-800">Edit Expense</div>
+                    <a
+                        href={routes?.back}
+                        data-native="true"
+                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                    >
+                        Back
+                    </a>
                 </div>
-                <a
-                    href={routes?.back}
-                    data-native="true"
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                >
-                    Back
-                </a>
-            </div>
-
-            <div className="card max-w-3xl p-6">
-                <form method="POST" action={routes?.update} enctype="multipart/form-data" className="grid gap-4 text-sm" data-native="true">
+                <div className="p-6">
+                    <form method="POST" action={routes?.update} encType="multipart/form-data" className="grid gap-4 text-sm" data-native="true">
                     <input type="hidden" name="_token" value={csrf} />
                     <input type="hidden" name="_method" value="PUT" />
 
@@ -130,6 +127,7 @@ export default function Edit({
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </>
     );

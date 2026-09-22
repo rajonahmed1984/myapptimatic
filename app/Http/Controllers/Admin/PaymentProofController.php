@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentProof;
 use App\Models\Setting;
 use App\Services\PaymentService;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -54,7 +56,7 @@ class PaymentProofController extends Controller
             });
         }
 
-        $paymentProofs = $query->get();
+        $paymentProofs = $query->paginate(30)->withQueryString();
 
         return Inertia::render(
             'Admin/PaymentProofs/Index',
@@ -125,7 +127,7 @@ class PaymentProofController extends Controller
     }
 
     private function indexInertiaProps(
-        Collection $paymentProofs,
+        LengthAwarePaginator $paymentProofs,
         string $status,
         string $search
     ): array {
@@ -152,7 +154,8 @@ class PaymentProofController extends Controller
                     'href' => route('admin.payment-proofs.index', ['status' => $key]),
                 ];
             })->values()->all(),
-            'payment_proofs' => $paymentProofs->values()->map(function (PaymentProof $proof) use ($dateFormat) {
+            'pagination' => PaginationPayload::make($paymentProofs),
+            'payment_proofs' => $paymentProofs->getCollection()->values()->map(function (PaymentProof $proof) use ($dateFormat) {
                 $invoice = $proof->invoice;
                 $invoiceNumber = is_numeric($invoice?->number) ? (string) $invoice->number : (string) $proof->invoice_id;
                 $invoiceUrl = $invoice ? route('admin.invoices.show', $invoice) : null;

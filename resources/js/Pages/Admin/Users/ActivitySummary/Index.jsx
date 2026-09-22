@@ -140,6 +140,11 @@ export default function Index({
             </div>
 
             <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        Showing 1 – {users.length} of {users.length} users
+                    </span>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-slate-50">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissionPayout;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -31,16 +32,7 @@ class PayoutController extends Controller
                     'paid_at_display' => $payout->paid_at?->format(config('app.datetime_format', 'd-m-Y h:i A')) ?? '--',
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $payouts->currentPage(),
-                'last_page' => $payouts->lastPage(),
-                'per_page' => $payouts->perPage(),
-                'total' => $payouts->total(),
-                'from' => $payouts->firstItem(),
-                'to' => $payouts->lastItem(),
-                'prev_page_url' => $payouts->previousPageUrl(),
-                'next_page_url' => $payouts->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($payouts),
             'routes' => [
                 'dashboard' => route('rep.dashboard'),
             ],

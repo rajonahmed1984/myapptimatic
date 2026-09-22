@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliatePayout;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -52,13 +53,7 @@ class AffiliatePayoutController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'has_pages' => $payouts->hasPages(),
-                'current_page' => $payouts->currentPage(),
-                'last_page' => $payouts->lastPage(),
-                'previous_url' => $payouts->previousPageUrl(),
-                'next_url' => $payouts->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($payouts),
         ]);
     }
 

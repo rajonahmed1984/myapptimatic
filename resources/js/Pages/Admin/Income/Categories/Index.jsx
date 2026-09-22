@@ -31,23 +31,9 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">{heading}</div>
-                </div>
-                <a
-                    href={routes?.back}
-                    data-native="true"
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                >
-                    Back to Income
-                </a>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
                 <div className="card p-6">
-                    <div className="section-label">{form?.title || 'Add category'}</div>
+                    <div className="text-sm font-semibold text-slate-900">{form?.title || 'Add category'}</div>
                     {isEditing ? (
                         <div className="mt-2 text-xs text-slate-500">
                             Editing:{' '}
@@ -106,14 +92,34 @@ export default function Index({
                     </form>
                 </div>
 
-                <div className="card p-6">
-                    <div className="section-label">Category list</div>
+                <div className="card overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                        <span className="text-xs font-semibold text-slate-500">
+                            {categories.length > 0 ? (
+                                <>
+                                    Showing <span className="font-semibold text-slate-700">1</span> – <span className="font-semibold text-slate-700">{categories.length}</span> of <span className="font-semibold text-slate-700">{categories.length}</span> categories
+                                </>
+                            ) : (
+                                'No categories'
+                            )}
+                        </span>
+                        {routes?.back && (
+                            <a
+                                href={routes.back}
+                                data-native="true"
+                                className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                            >
+                                Back to Income
+                            </a>
+                        )}
+                    </div>
                     {errors.category ? (
-                        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                        <div className="m-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
                             {errors.category}
                         </div>
                     ) : null}
                     <DataTable
+                        framed={false}
                         rows={categories}
                         emptyMessage="No categories yet."
                         columns={[
@@ -181,6 +187,16 @@ export default function Index({
                             />
                         )}
                     />
+
+                    <div className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+                        {categories.length > 0 ? (
+                            <>
+                                Showing <span className="font-semibold text-slate-700">1</span> – <span className="font-semibold text-slate-700">{categories.length}</span> of <span className="font-semibold text-slate-700">{categories.length}</span> categories
+                            </>
+                        ) : (
+                            'No categories'
+                        )}
+                    </div>
                 </div>
             </div>
         </>

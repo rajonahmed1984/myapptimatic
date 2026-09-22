@@ -1,4 +1,5 @@
 import React from 'react';
+import Pagination from '../../../Components/Table/Pagination';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
@@ -66,64 +67,71 @@ export default function Index({
     return (
         <>
             <Head title={pageTitle} />
-            <div className="card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div className="section-label">Tasks</div>
-                        <div className="text-sm text-slate-500">All tasks you are allowed to see.</div>
+            <div className="card overflow-hidden">
+                <div className="border-b border-slate-200 p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <div className="section-label">Tasks</div>
+                            <div className="text-sm text-slate-500">All tasks you are allowed to see.</div>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-semibold">
+                            <a href={routes?.projects} data-native="true" className="whitespace-nowrap text-slate-500 hover:text-teal-600">
+                                Projects
+                            </a>
+                            <a href={routes?.index} data-native="true" className="whitespace-nowrap text-teal-600 hover:text-teal-500">
+                                Reset filters
+                            </a>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-semibold">
-                        <a href={routes?.projects} data-native="true" className="whitespace-nowrap text-slate-500 hover:text-teal-600">
-                            Projects
-                        </a>
-                        <a href={routes?.index} data-native="true" className="whitespace-nowrap text-teal-600 hover:text-teal-500">
-                            Reset filters
-                        </a>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-2 text-xs">
+                            {statusFilters.map((filter) => {
+                                const active = status_filter === filter.key || (!status_filter && filter.key === '');
+                                return (
+                                    <a
+                                        key={filter.key || 'all'}
+                                        href={buildFilterUrl(filter.key)}
+                                        data-native="true"
+                                        className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-semibold ${active ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-600 hover:border-teal-200 hover:text-teal-600'}`}
+                                    >
+                                        <span>{filter.label}</span>
+                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{countFor(filter.key)}</span>
+                                    </a>
+                                );
+                            })}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <form
+                                method="GET"
+                                action={routes?.index}
+                                className="flex items-center gap-2"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    submitSearch();
+                                }}
+                            >
+                                {status_filter ? <input type="hidden" name="status" value={status_filter} /> : null}
+                                <input
+                                    type="text"
+                                    name="search"
+                                    value={searchTerm}
+                                    onChange={(event) => setSearchTerm(event.target.value)}
+                                    placeholder="Search tasks..."
+                                    className="w-48 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                />
+                                <button type="submit" className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
+                                    Search
+                                </button>
+                            </form>
+                            <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                                Showing {pagination?.from ?? (tasks.length > 0 ? 1 : 0)} – {pagination?.to ?? tasks.length} of {pagination?.total ?? tasks.length} tasks
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap gap-2 text-xs">
-                        {statusFilters.map((filter) => {
-                            const active = status_filter === filter.key || (!status_filter && filter.key === '');
-                            return (
-                                <a
-                                    key={filter.key || 'all'}
-                                    href={buildFilterUrl(filter.key)}
-                                    data-native="true"
-                                    className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-semibold ${active ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-600 hover:border-teal-200 hover:text-teal-600'}`}
-                                >
-                                    <span>{filter.label}</span>
-                                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">{countFor(filter.key)}</span>
-                                </a>
-                            );
-                        })}
-                    </div>
-                    <form
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-2"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        {status_filter ? <input type="hidden" name="status" value={status_filter} /> : null}
-                        <input
-                            type="text"
-                            name="search"
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                            placeholder="Search tasks"
-                            className="w-48 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 focus:border-teal-300 focus:outline-none"
-                        />
-                        <button type="submit" className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                            Search
-                        </button>
-                    </form>
-                </div>
-
-                <div className="mt-6 overflow-x-auto">
+                <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.2em] text-slate-500">
                             <tr>
@@ -238,22 +246,11 @@ export default function Index({
                     </table>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                    <a
-                        href={pagination.prev_page_url || '#'}
-                        data-native="true"
-                        className={`whitespace-nowrap rounded-full border px-3 py-1 ${pagination.prev_page_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
-                    >
-                        Previous
-                    </a>
-                    <a
-                        href={pagination.next_page_url || '#'}
-                        data-native="true"
-                        className={`whitespace-nowrap rounded-full border px-3 py-1 ${pagination.next_page_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
-                    >
-                        Next
-                    </a>
-                </div>
+                <Pagination
+                    pagination={pagination}
+                    label="tasks"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

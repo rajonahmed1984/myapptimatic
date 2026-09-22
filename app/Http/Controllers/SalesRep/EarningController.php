@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SalesRep;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
 use App\Models\Project;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -65,16 +66,7 @@ class EarningController extends Controller
                     'currency' => $project->currency,
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $earnings->currentPage(),
-                'last_page' => $earnings->lastPage(),
-                'per_page' => $earnings->perPage(),
-                'total' => $earnings->total(),
-                'from' => $earnings->firstItem(),
-                'to' => $earnings->lastItem(),
-                'prev_page_url' => $earnings->previousPageUrl(),
-                'next_page_url' => $earnings->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($earnings),
             'routes' => [
                 'dashboard' => route('rep.dashboard'),
                 'index' => route('rep.earnings.index'),

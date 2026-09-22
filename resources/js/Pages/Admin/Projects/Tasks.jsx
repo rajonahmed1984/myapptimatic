@@ -1,4 +1,5 @@
 import React from 'react';
+import Pagination from '../../../Components/Table/Pagination';
 import { Head, usePage } from '@inertiajs/react';
 
 const STATUS_LABELS = {
@@ -418,24 +419,11 @@ export default function Tasks({
                         </div>
                     )}
 
-                    {pagination?.has_pages ? (
-                        <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                            <a
-                                href={pagination.previous_url || '#'}
-                                data-native="true"
-                                className={`rounded-full border px-3 py-1 ${pagination.previous_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
-                            >
-                                Previous
-                            </a>
-                            <a
-                                href={pagination.next_url || '#'}
-                                data-native="true"
-                                className={`rounded-full border px-3 py-1 ${pagination.next_url ? 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600' : 'cursor-not-allowed border-slate-200 text-slate-400'}`}
-                            >
-                                Next
-                            </a>
-                        </div>
-                    ) : null}
+                    <Pagination
+                        pagination={pagination}
+                        label="tasks"
+                        className="mt-4 border-t border-slate-200 pt-4"
+                    />
                 </div>
             </div>
         </>

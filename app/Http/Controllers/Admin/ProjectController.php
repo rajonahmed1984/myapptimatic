@@ -27,6 +27,7 @@ use App\Services\TaskQueryService;
 use App\Services\TaskStatusNotificationService;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use App\Support\TaskActivityLogger;
 use App\Support\TaskAssignees;
@@ -58,6 +59,7 @@ class ProjectController extends Controller
     {
         $statusFilter = $request->query('status');
         $typeFilter = $request->query('type');
+        $search = trim((string) $request->query('search', ''));
         $user = $request->user();
         $isAdmin = $user?->isAdmin();
         $employeeId = $user?->employee?->id;
@@ -70,6 +72,18 @@ class ProjectController extends Controller
                 'tasks as done_tasks_count' => fn ($q) => $q->whereIn('status', ['completed', 'done']),
                 'subtasks as open_subtasks_count' => fn ($q) => $q->where('is_completed', false),
             ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('id', 'like', '%'.$search.'%')
+                        ->orWhereHas('customer', function ($cq) use ($search) {
+                            $cq->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('company_name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%')
+                                ->orWhere('phone', 'like', '%'.$search.'%');
+                        });
+                });
+            })
             ->when($statusFilter, fn ($q) => $q->where('status', $statusFilter))
             ->when($typeFilter, fn ($q) => $q->where('type', $typeFilter))
             ->when(! $isAdmin && $user?->isClient(), fn ($q) => $q->where('customer_id', $user->customer_id))
@@ -87,9 +101,11 @@ class ProjectController extends Controller
             'pagination' => $this->paginationPayload($projects),
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
+            'search' => $search,
             'filters' => [
                 'status' => $statusFilter,
                 'type' => $typeFilter,
+                'search' => $search,
             ],
             'routes' => [
                 'index' => route('admin.projects.index'),
@@ -839,11 +855,7 @@ class ProjectController extends Controller
                     ],
                 ];
             })->values(),
-            'pagination' => [
-                'has_pages' => $tasks->hasPages(),
-                'previous_url' => $tasks->previousPageUrl(),
-                'next_url' => $tasks->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($tasks),
         ]);
     }
 
@@ -1350,6 +1362,8 @@ class ProjectController extends Controller
             'status_class' => $this->projectStatusClass((string) $project->status),
             'customer_name' => (string) ($project->customer?->name ?? '--'),
             'customer_company' => (string) ($project->customer?->company_name ?? ''),
+            'customer_email' => (string) ($project->customer?->email ?? ''),
+            'customer_show_route' => $project->customer ? route('admin.customers.show', $project->customer) : null,
             'due_date' => $project->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
             'employees' => $project->employees->pluck('name')->filter()->values(),
             'sales_reps' => $project->salesRepresentatives->pluck('name')->filter()->values(),
@@ -2136,17 +2150,7 @@ PROMPT;
      */
     private function paginationPayload($paginator): array
     {
-        return [
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'per_page' => $paginator->perPage(),
-            'total' => $paginator->total(),
-            'from' => $paginator->firstItem(),
-            'to' => $paginator->lastItem(),
-            'previous_url' => $paginator->previousPageUrl(),
-            'next_url' => $paginator->nextPageUrl(),
-            'has_pages' => $paginator->hasPages(),
-        ];
+        return PaginationPayload::make($paginator);
     }
 
     private function parseAssignee(string $value): array

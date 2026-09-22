@@ -1,71 +1,103 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import IncomeCreateModal from './IncomeCreateModal';
 
 export default function Index({
     pageTitle = 'Income list',
     search = '',
     routes = {},
     incomes = [],
-    pagination_links = [],
+    pagination = {},
+    categories = [],
+    defaultIncomeDate = '',
 }) {
+    const { flash } = usePage().props || {};
     const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
         initialValue: search,
         url: routes?.index,
     });
 
+    const [isCreateOpen, setIsCreateOpen] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('create') === '1';
+        }
+        return false;
+    });
+
+    const handleCloseModal = () => {
+        setIsCreateOpen(false);
+        if (typeof window !== 'undefined' && window.location.search.includes('create=')) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('create');
+            window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        }
+    };
+
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        id="incomeSearchForm"
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full max-w-sm">
+            <div id="incomeTable" className="card overflow-hidden">
+                {flash?.status && (
+                    <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+                        <span>{flash.status}</span>
+                    </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <form
+                            id="incomeSearchForm"
+                            method="GET"
+                            action={routes?.index}
+                            className="w-full max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search income..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (incomes.length > 0 ? 1 : 0)} – {pagination?.to ?? incomes.length} of {pagination?.total ?? incomes.length} income entries
+                        </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <a
+                            href={routes?.categories}
+                            data-native="true"
+                            className="ui-btn-secondary"
+                        >
+                            Categories
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setIsCreateOpen(true)}
+                            className="ui-btn-primary flex items-center gap-1.5"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Add Income
+                        </button>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <a
-                        href={routes?.categories}
-                        data-native="true"
-                        className="ui-btn-secondary"
-                    >
-                        Categories
-                    </a>
-                    <a
-                        href={routes?.create}
-                        data-native="true"
-                        className="ui-btn-primary"
-                    >
-                        Add Income
-                    </a>
-                </div>
-            </div>
 
-            <div id="incomeTable">
-                <div className="overflow-hidden">
-                    <div className="mt-4">
+                <div>
+                    <div>
                         <DataTable
+                            framed={false}
                             rows={incomes}
                             rowKey={(income) => income.key || `${income.title}-${income.income_date_display}-${income.amount_display}`}
                             emptyMessage="No income found."
@@ -134,32 +166,22 @@ export default function Index({
                             )}
                         />
 
-                        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                            {pagination_links.map((link, index) =>
-                                link.url ? (
-                                    <a
-                                        key={`${index}-${link.label}`}
-                                        href={link.url}
-                                        data-native="true"
-                                        className={`rounded-full border px-3 py-1 ${
-                                            link.active
-                                                ? 'border-slate-900 bg-slate-900 text-white'
-                                                : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ) : (
-                                    <span
-                                        key={`${index}-${link.label}`}
-                                        className="rounded-full border border-slate-200 px-3 py-1 text-slate-300"
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ),
-                            )}
-                        </div>
+                        <Pagination
+                            pagination={pagination}
+                            label="income entries"
+                            className="border-t border-slate-200 px-4 py-3"
+                        />
                     </div>
                 </div>
             </div>
+
+            <IncomeCreateModal
+                open={isCreateOpen}
+                onClose={handleCloseModal}
+                categories={categories}
+                storeUrl={routes?.store || '/admin/income'}
+                defaultDate={defaultIncomeDate}
+            />
         </>
     );
 }

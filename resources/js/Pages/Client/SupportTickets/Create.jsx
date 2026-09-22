@@ -14,9 +14,6 @@ export default function Create({ form = {}, routes = {} }) {
             <Head title="New Support Ticket" />
 
             <div className="card p-6">
-                <div className="section-label">Support request</div>
-                <h1 className="mt-2 text-2xl font-semibold text-slate-900">Open a ticket</h1>
-                <p className="mt-2 text-sm text-slate-500">Describe your issue and we will respond quickly.</p>
 
                 <form method="POST" action={routes.store} className="mt-6 space-y-5" encType="multipart/form-data" data-native="true">
                     <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />

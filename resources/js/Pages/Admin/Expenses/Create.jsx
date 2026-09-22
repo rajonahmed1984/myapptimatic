@@ -5,6 +5,7 @@ import SearchableSelect from '../../../Components/SearchableSelect';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 import MobileStickyAction from '../../../Components/Mobile/MobileStickyAction';
+import Pagination from '../../../Components/Table/Pagination';
 
 function formatCurrency(code, amount) {
     const value = Number.parseFloat(amount ?? 0);
@@ -28,7 +29,6 @@ export default function Create({
     form = {},
     routes = {},
     pagination = {},
-    pagination_links = [],
 }) {
     const { props } = usePage();
     const errors = props?.errors || {};
@@ -112,49 +112,49 @@ export default function Create({
         setPaymentAmount(value);
     };
 
+    const totalExpenses = Number(pagination?.total ?? oneTimeExpenses.length);
+    const fromExpense = pagination?.from !== undefined && pagination?.from !== null
+        ? pagination.from
+        : (totalExpenses > 0 ? 1 : 0);
+    const toExpense = pagination?.to !== undefined && pagination?.to !== null
+        ? pagination.to
+        : oneTimeExpenses.length;
+
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">New one-time expense</div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <a
-                        href={routes?.index}
-                        data-native="true"
-                        className={BTN.secondary}
-                    >
-                        Back
-                    </a>
-                    <button
-                        type="button"
-                        onClick={() => setShowAddModal(true)}
-                        className={BTN.primary}
-                    >
-                        Add expense
-                    </button>
-                </div>
-            </div>
-
-            <div className="card p-6">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">One-time expense list</div>
-                        <div className="text-sm text-slate-500">Latest {oneTimeExpenses.length} entries</div>
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        {totalExpenses > 0 ? (
+                            <>
+                                Showing <span className="font-semibold text-slate-700">{fromExpense}</span> – <span className="font-semibold text-slate-700">{toExpense}</span> of <span className="font-semibold text-slate-700">{totalExpenses}</span> expenses
+                            </>
+                        ) : (
+                            'No expenses'
+                        )}
+                    </span>
+                    <div className="flex items-center gap-3">
+                        <a
+                            href={routes?.index}
+                            data-native="true"
+                            className={BTN.secondary}
+                        >
+                            Back to Expenses
+                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setShowAddModal(true)}
+                            className={BTN.primary}
+                        >
+                            Add expense
+                        </button>
                     </div>
-                    <a
-                        href={routes?.index_one_time || routes?.index}
-                        data-native="true"
-                        className={BTN.secondary}
-                    >
-                        View all
-                    </a>
                 </div>
 
                 <DataTable
+                    framed={false}
                     rows={oneTimeExpenses}
                     emptyMessage="No one-time expenses yet."
                     columns={[
@@ -303,31 +303,11 @@ export default function Create({
                     )}
                 />
 
-                {pagination_links.length > 0 ? (
-                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 text-sm">
-                        {pagination_links.map((link, index) =>
-                            link.url ? (
-                                <a
-                                    key={`${index}-${link.label}`}
-                                    href={link.url}
-                                    data-native="true"
-                                    className={`rounded-full border px-3 py-1 text-xs ${
-                                        link.active
-                                            ? 'border-slate-900 bg-slate-900 text-white font-semibold'
-                                            : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ) : (
-                                <span
-                                    key={`${index}-${link.label}`}
-                                    className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-300"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ),
-                        )}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="expenses"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
 
             <div className={`fixed inset-0 z-50 ${showAddModal ? '' : 'hidden'}`}>

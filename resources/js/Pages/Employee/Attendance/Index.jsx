@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (label) => {
@@ -20,8 +21,6 @@ export default function Index({ attendances = [], selected_month = '', status_su
             <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <div className="section-label">Employee</div>
-                        <h1 className="text-2xl font-semibold text-slate-900">Attendance Details</h1>
                         <div className="text-sm text-slate-500">Daily attendance recorded by HR.</div>
                     </div>
 
@@ -86,15 +85,11 @@ export default function Index({ attendances = [], selected_month = '', status_su
                     )}
                 />
 
-                {pagination?.last_page > 1 ? (
-                    <div className="mt-4 flex items-center justify-between text-xs px-2">
-                        <span className="text-slate-500">Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}</span>
-                        <div className="flex items-center gap-2">
-                            {pagination.prev_page_url ? <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Previous</a> : null}
-                            {pagination.next_page_url ? <a href={pagination.next_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Next</a> : null}
-                        </div>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="records"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

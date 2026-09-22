@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -159,16 +160,7 @@ class AffiliateController extends Controller
                     'created_at_display' => $referral->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $referrals->currentPage(),
-                'last_page' => $referrals->lastPage(),
-                'per_page' => $referrals->perPage(),
-                'total' => $referrals->total(),
-                'from' => $referrals->firstItem(),
-                'to' => $referrals->lastItem(),
-                'prev_page_url' => $referrals->previousPageUrl(),
-                'next_page_url' => $referrals->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($referrals),
             'routes' => [
                 'index' => route('client.affiliates.index'),
             ],
@@ -206,16 +198,7 @@ class AffiliateController extends Controller
                     'created_at_display' => $commission->created_at?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $commissions->currentPage(),
-                'last_page' => $commissions->lastPage(),
-                'per_page' => $commissions->perPage(),
-                'total' => $commissions->total(),
-                'from' => $commissions->firstItem(),
-                'to' => $commissions->lastItem(),
-                'prev_page_url' => $commissions->previousPageUrl(),
-                'next_page_url' => $commissions->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($commissions),
             'routes' => [
                 'index' => route('client.affiliates.index'),
             ],
@@ -254,16 +237,7 @@ class AffiliateController extends Controller
                     'commissions_count' => (int) $payout->commissions->count(),
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $payouts->currentPage(),
-                'last_page' => $payouts->lastPage(),
-                'per_page' => $payouts->perPage(),
-                'total' => $payouts->total(),
-                'from' => $payouts->firstItem(),
-                'to' => $payouts->lastItem(),
-                'prev_page_url' => $payouts->previousPageUrl(),
-                'next_page_url' => $payouts->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($payouts),
             'routes' => [
                 'index' => route('client.affiliates.index'),
             ],

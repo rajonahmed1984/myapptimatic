@@ -1,4 +1,5 @@
 import React from 'react';
+import Pagination from '../../../Components/Table/Pagination';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
@@ -103,7 +104,12 @@ export default function Index({
                 </div>
 
                 <div className="rounded-2xl border border-slate-300 bg-white/80 p-4">
-                    <div className="text-sm font-semibold text-slate-800">Payout history</div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                        <div className="text-sm font-semibold text-slate-800">Payout history</div>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? payouts.length} of {pagination?.total ?? payouts.length} payouts
+                        </span>
+                    </div>
                     <div className="mt-3 overflow-x-auto">
                         <table className="min-w-full text-left text-sm">
                             <thead>
@@ -160,32 +166,11 @@ export default function Index({
                         </table>
                     </div>
 
-                    {pagination?.has_pages ? (
-                        <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                            {pagination?.previous_url ? (
-                                <a
-                                    href={pagination.previous_url}
-                                    data-native="true"
-                                    className={BTN.secondary}
-                                >
-                                    Previous
-                                </a>
-                            ) : (
-                                <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                            )}
-                            {pagination?.next_url ? (
-                                <a
-                                    href={pagination.next_url}
-                                    data-native="true"
-                                    className={BTN.secondary}
-                                >
-                                    Next
-                                </a>
-                            ) : (
-                                <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                            )}
-                        </div>
-                    ) : null}
+                    <Pagination
+                        pagination={pagination}
+                        label="payouts"
+                        className="border-t border-slate-200 px-4 py-3"
+                    />
                 </div>
             </div>
         </>

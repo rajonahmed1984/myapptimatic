@@ -10,6 +10,7 @@ use App\Models\Subscription;
 use App\Policies\OwnershipTransferPolicy;
 use App\Services\ClientNotificationService;
 use App\Services\ProjectTransferService;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -58,11 +59,7 @@ class OwnershipTransferController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'has_pages' => $transfers->hasPages(),
-                'previous_url' => $transfers->previousPageUrl(),
-                'next_url' => $transfers->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($transfers),
         ]);
     }
 

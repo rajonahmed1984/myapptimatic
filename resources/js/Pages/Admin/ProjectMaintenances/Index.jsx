@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusBadgeClass = (status) => {
@@ -34,40 +35,42 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full max-w-sm">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form
+                            method="GET"
+                            action={routes?.index}
+                            className="min-w-0 flex-1 max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search maintenance..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? maintenances.length} of {pagination?.total ?? maintenances.length} maintenance plans
+                        </span>
+                    </div>
+                    <a
+                        href={routes?.create}
+                        data-native="true"
+                        className="ui-btn-primary"
+                    >
+                        Add maintenance
+                    </a>
                 </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className="ui-btn-primary"
-                >
-                    Add maintenance
-                </a>
-            </div>
 
-            <div className="card overflow-hidden">
                 <DataTable
+                    framed={false}
                     rows={maintenances}
                     emptyMessage="No maintenance plans yet."
                     columns={[
@@ -178,35 +181,12 @@ export default function Index({
                         </MobileCard>
                     )}
                 />
-            </div>
-
-            {pagination?.has_pages ? (
-                <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-                    {pagination?.previous_url ? (
-                        <a
-                            href={pagination.previous_url}
-                            data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                        >
-                            Previous
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                    )}
-
-                    {pagination?.next_url ? (
-                        <a
-                            href={pagination.next_url}
-                            data-native="true"
-                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                        >
-                            Next
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                    )}
+                <Pagination
+                    pagination={pagination}
+                    label="maintenance plans"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
                 </div>
-            ) : null}
         </>
     );
 }

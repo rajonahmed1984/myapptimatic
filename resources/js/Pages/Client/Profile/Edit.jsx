@@ -31,9 +31,6 @@ export default function Edit({ user = {}, form = {}, routes = {} }) {
             <Head title="Profile" />
 
             <div className="card p-6">
-                <div className="section-label">Client profile</div>
-                <h1 className="mt-2 text-2xl font-semibold text-slate-900">Account details</h1>
-                <p className="mt-2 text-sm text-slate-500">Update your name, email, and password.</p>
 
                 <form method="POST" action={routes.update} className="mt-6 space-y-6" encType="multipart/form-data" data-native="true">
                     <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />

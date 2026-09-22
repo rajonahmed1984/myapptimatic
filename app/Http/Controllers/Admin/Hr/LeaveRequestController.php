@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -34,11 +35,7 @@ class LeaveRequestController extends Controller
                     'reject' => route('admin.hr.leave-requests.reject', $leave),
                 ],
             ])->values(),
-            'pagination' => [
-                'previous_url' => $leaveRequests->previousPageUrl(),
-                'next_url' => $leaveRequests->nextPageUrl(),
-                'has_pages' => $leaveRequests->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($leaveRequests),
         ]);
     }
 

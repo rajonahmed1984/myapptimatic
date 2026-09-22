@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
@@ -39,37 +40,36 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Orders</h1>
-                    <p className="mt-1 text-sm text-slate-500">Review pending orders and manage their status.</p>
-                </div>
-                <div className="w-full max-w-sm">
-                    <form
-                        id="ordersSearchForm"
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <form
+                            id="ordersSearchForm"
+                            method="GET"
+                            action={routes?.index}
+                            className="w-full max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search orders..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (orders.length > 0 ? 1 : 0)} – {pagination?.to ?? orders.length} of {pagination?.total ?? orders.length} orders
+                        </span>
+                    </div>
                 </div>
-            </div>
 
             <DataTable
+                framed={false}
                 rows={orders}
                 emptyMessage="No orders yet."
                 columns={[
@@ -225,32 +225,12 @@ export default function Index({
                 )}
             />
 
-            {pagination?.has_pages ? (
-                <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                    {pagination?.previous_url ? (
-                        <a
-                            href={pagination.previous_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Previous
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                    )}
-                    {pagination?.next_url ? (
-                        <a
-                            href={pagination.next_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Next
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                    )}
-                </div>
-            ) : null}
+            <Pagination
+                pagination={pagination}
+                label="orders"
+                className="border-t border-slate-200 px-4 py-3"
+            />
+            </div>
         </>
     );
 }

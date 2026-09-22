@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 export default function Index({
     campaigns = {},
@@ -183,11 +184,16 @@ export default function Index({
                 </div>
 
                 {/* Campaign History Log */}
-                <div className="card p-6">
-                    <div className="section-label mb-2">Campaign Logs</div>
-                    <div className="text-xl font-bold text-slate-900 mb-4">Past Mass Mailings</div>
+                <div className="card overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                        <div className="text-sm font-semibold text-slate-800">Past Mass Mailings</div>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {campaigns?.from ?? 1} – {campaigns?.to ?? campaignList.length} of {campaigns?.total ?? campaignList.length} campaigns
+                        </span>
+                    </div>
 
                     <DataTable
+                        framed={false}
                         rows={campaignList}
                         emptyMessage="No mass mail campaigns launched yet."
                         columns={[
@@ -239,32 +245,11 @@ export default function Index({
                         }}
                     />
 
-                    {campaigns?.links?.length > 3 && (
-                        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                            {campaigns.links.map((link, index) =>
-                                link.url ? (
-                                    <a
-                                        key={`${index}-${link.label}`}
-                                        href={link.url}
-                                        data-native="true"
-                                        className={`rounded-full border px-3 py-1 ${
-                                            link.active
-                                                ? 'border-slate-900 bg-slate-900 text-white'
-                                                : 'border-slate-300 text-slate-700 hover:border-teal-300 hover:text-teal-600'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ) : (
-                                    <span
-                                        key={`${index}-${link.label}`}
-                                        className="rounded-full border border-slate-200 px-3 py-1 text-slate-400"
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                        style={{ pointerEvents: 'none' }}
-                                    />
-                                )
-                            )}
-                        </div>
-                    )}
+                    <Pagination
+                        pagination={campaigns}
+                        label="campaigns"
+                        className="border-t border-slate-200 px-4 py-3"
+                    />
                 </div>
             </div>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Payouts({ payouts = [], pagination = {}, routes = {} }) {
@@ -10,10 +11,6 @@ export default function Payouts({ payouts = [], pagination = {}, routes = {} }) 
 
             <div className="card p-6">
                 <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <div className="section-label">Affiliate</div>
-                        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Payouts</h1>
-                    </div>
                     <a href={routes.index} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
                         Dashboard
                     </a>
@@ -44,20 +41,11 @@ export default function Payouts({ payouts = [], pagination = {}, routes = {} }) 
                     )}
                 />
 
-                {pagination.last_page > 1 ? (
-                    <div className="mt-4 flex items-center gap-2 text-xs">
-                        {pagination.prev_page_url ? (
-                            <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">
-                                Previous
-                            </a>
-                        ) : null}
-                        {pagination.next_page_url ? (
-                            <a href={pagination.next_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">
-                                Next
-                            </a>
-                        ) : null}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="payouts"
+                    className="mt-4 border-t border-slate-200 pt-4"
+                />
             </div>
         </>
     );

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../../Components/Table/DataTable';
+import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -17,24 +18,55 @@ export default function Index({
     leaveRequests = [],
     pagination = {},
 }) {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredRequests = useMemo(() => {
+        const query = searchTerm.trim().toLowerCase();
+        if (!query) return leaveRequests;
+        return leaveRequests.filter(
+            (r) =>
+                String(r.employee_name || '').toLowerCase().includes(query) ||
+                String(r.leave_type_name || '').toLowerCase().includes(query) ||
+                String(r.status || '').toLowerCase().includes(query)
+        );
+    }, [leaveRequests, searchTerm]);
+
+    const total = Number(pagination?.total ?? filteredRequests.length);
+
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-4 sm:p-6">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search leave requests..."
+                            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (total > 0 ? 1 : 0)} – {pagination?.to ?? total} of {total} leave requests
+                        </span>
+                    </div>
+                </div>
+
                 <DataTable
-                    rows={leaveRequests}
-                    emptyMessage="No leave requests."
+                    framed={false}
+                    rows={filteredRequests}
+                    emptyMessage="No leave requests found."
                     columns={[
-                        { key: 'employee', header: 'Employee', render: (leave) => leave.employee_name },
+                        { key: 'employee', header: 'Employee', cellClassName: 'font-semibold text-slate-900', render: (leave) => leave.employee_name },
                         { key: 'type', header: 'Type', render: (leave) => leave.leave_type_name },
-                        { key: 'dates', header: 'Dates', render: (leave) => `${leave.start_date} - ${leave.end_date}` },
-                        { key: 'days', header: 'Days', render: (leave) => leave.total_days },
+                        { key: 'dates', header: 'Dates', cellClassName: 'text-slate-600', render: (leave) => `${leave.start_date} - ${leave.end_date}` },
+                        { key: 'days', header: 'Days', cellClassName: 'font-medium text-slate-700', render: (leave) => leave.total_days },
                         {
                             key: 'status',
                             header: 'Status',
                             render: (leave) => (
-                                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusClass(leave.status)}`}>
+                                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusClass(leave.status)}`}>
                                     {leave.status}
                                 </span>
                             ),
@@ -46,17 +78,18 @@ export default function Index({
                             cellClassName: 'text-right space-x-2',
                             render: (leave) => (
                                 leave.is_pending ? (
-                                    <>
-                                        <form method="POST" action={leave.routes.approve} data-native="true" className="inline">
+                                    <div className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
+                                        <form method="POST" action={leave.routes?.approve} data-native="true" className="inline">
                                             <input type="hidden" name="_token" value={csrfToken()} />
-                                            <button className="text-xs text-emerald-700 hover:underline">Approve</button>
+                                            <button className="text-xs font-semibold text-emerald-700 hover:underline">Approve</button>
                                         </form>
-                                        <form method="POST" action={leave.routes.reject} data-native="true" className="inline">
+                                        <span className="text-slate-300">·</span>
+                                        <form method="POST" action={leave.routes?.reject} data-native="true" className="inline">
                                             <input type="hidden" name="_token" value={csrfToken()} />
-                                            <button className="text-xs text-rose-600 hover:underline">Reject</button>
+                                            <button className="text-xs font-semibold text-rose-600 hover:underline">Reject</button>
                                         </form>
-                                    </>
-                                ) : <span className="text-xs text-slate-500">Locked</span>
+                                    </div>
+                                ) : <span className="text-xs text-slate-400">Locked</span>
                             ),
                         },
                     ]}
@@ -73,7 +106,7 @@ export default function Index({
                             actions={
                                 leave.is_pending ? (
                                     <>
-                                        <form method="POST" action={leave.routes.approve} data-native="true" className="flex-1">
+                                        <form method="POST" action={leave.routes?.approve} data-native="true" className="flex-1">
                                             <input type="hidden" name="_token" value={csrfToken()} />
                                             <button
                                                 type="submit"
@@ -82,7 +115,7 @@ export default function Index({
                                                 Approve
                                             </button>
                                         </form>
-                                        <form method="POST" action={leave.routes.reject} data-native="true" className="flex-1">
+                                        <form method="POST" action={leave.routes?.reject} data-native="true" className="flex-1">
                                             <input type="hidden" name="_token" value={csrfToken()} />
                                             <button
                                                 type="submit"
@@ -100,12 +133,11 @@ export default function Index({
                     )}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                        <a href={pagination?.previous_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.previous_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Previous</a>
-                        <a href={pagination?.next_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.next_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Next</a>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="leave requests"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

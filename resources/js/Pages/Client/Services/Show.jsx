@@ -133,11 +133,7 @@ export default function Show({ service = {}, licenses = [], cancellation = {}, r
                 </div>
             ) : null}
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Service Details</h1>
-                    <p className="mt-1 text-sm text-slate-500">Review the service configuration and license coverage.</p>
-                </div>
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
                 <a href={routes.index} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
                     Back to services
                 </a>

@@ -9,6 +9,7 @@ use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
 use App\Services\SupportTicketAiService;
 use App\Support\AjaxResponse;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -365,11 +366,7 @@ class SupportTicketController extends Controller
                     ],
                 ];
             })->all(),
-            'pagination' => [
-                'has_pages' => $tickets->hasPages(),
-                'previous_url' => $tickets->previousPageUrl(),
-                'next_url' => $tickets->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($tickets),
         ];
     }
 

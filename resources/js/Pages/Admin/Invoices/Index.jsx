@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import Pagination from '../../../Components/Table/Pagination';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 const BTN = {
@@ -39,35 +40,37 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
+            <div className="card overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                     <form
                         method="GET"
                         action={routes?.current || routes?.index}
-                        className="flex items-center gap-3"
+                        className="w-full max-w-sm"
                         onSubmit={(event) => {
                             event.preventDefault();
                             submitSearch();
                         }}
                     >
-                        <div className="relative w-full max-w-sm">
-                            <input
-                                type="text"
-                                name="search"
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="Search invoices..."
-                                className="ui-input"
-                            />
-                        </div>
+                        <input
+                            type="text"
+                            name="search"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Search invoices..."
+                            className="ui-input w-full"
+                        />
                     </form>
+                    <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                        Showing {pagination?.from ?? (invoices.length > 0 ? 1 : 0)} – {pagination?.to ?? invoices.length} of {pagination?.total ?? invoices.length} invoices
+                    </span>
                 </div>
                 <a href={routes?.create} data-native="true" className="ui-btn-primary">
                     Create Invoice
                 </a>
             </div>
 
-            <div className="mb-4 flex gap-2 overflow-x-auto hide-scrollbar momentum-scroll pb-1">
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar momentum-scroll border-b border-slate-200 px-4 py-3">
                 {tabs.map((tab) => {
                     if (!tab.href || project) {
                         return null;
@@ -93,14 +96,14 @@ export default function Index({
             </div>
 
             {/* Mobile Card List (<md) */}
-            <div className="md:hidden space-y-3">
+            <div className="md:hidden divide-y divide-slate-200">
                 {invoices.length === 0 ? (
-                    <div className="card p-6 text-center text-sm text-slate-500">
+                    <div className="p-6 text-center text-sm text-slate-500">
                         {statusFilter ? `No ${pageTitle} found.` : 'No invoices yet.'}
                     </div>
                 ) : (
                     invoices.map((invoice) => (
-                        <div key={invoice.id} className="card p-4 flex flex-col gap-3 shadow-sm border border-slate-200/80">
+                        <div key={invoice.id} className="p-4 flex flex-col gap-3">
                             <div className="flex items-center justify-between gap-2">
                                 <a
                                     href={invoice.routes?.show}
@@ -186,7 +189,7 @@ export default function Index({
             </div>
 
             {/* Desktop Table (>=md) */}
-            <div className="hidden md:block card overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
                 <table className={`w-full text-left text-sm ${hidePaidDate ? 'min-w-[930px]' : 'min-w-[1050px]'}`}>
                     <thead className="border-b border-slate-300 text-xs uppercase tracking-[0.25em] text-slate-500">
                         <tr>
@@ -281,33 +284,12 @@ export default function Index({
                 </table>
             </div>
 
-            {pagination?.has_pages ? (
-                <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-                    {pagination?.previous_url ? (
-                        <a
-                            href={pagination.previous_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Previous
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                    )}
-
-                    {pagination?.next_url ? (
-                        <a
-                            href={pagination.next_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Next
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                    )}
-                </div>
-            ) : null}
+            <Pagination
+                pagination={pagination}
+                label="invoices"
+                className="border-t border-slate-200 px-4 py-3"
+            />
+            </div>
         </>
     );
 }

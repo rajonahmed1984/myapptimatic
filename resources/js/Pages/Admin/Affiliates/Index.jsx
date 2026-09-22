@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, router } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import Pagination from '../../../Components/Table/Pagination';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 import FilterSheet from '../../../Components/Mobile/FilterSheet';
@@ -61,90 +62,48 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Affiliate Management</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Manage affiliates</h1>
-                    <p className="mt-2 text-sm text-slate-600">Track and manage your affiliate partners.</p>
-                </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className="ui-btn-primary"
-                >
-                    Add affiliate
-                </a>
-            </div>
-
-            <div className="card p-6">
-                {/* Mobile (<md): compact search + a Filters button opens status in a sheet */}
-                <div className="mb-6 flex items-center gap-2 md:hidden">
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search by name, email, or code..."
-                        className="ui-input flex-1"
-                    />
-                    <FilterSheet
-                        title="Filter Affiliates"
-                        activeCount={statusFilter ? 1 : 0}
-                        onApply={() => handleFilterSubmit({ preventDefault() {} })}
-                        onClear={hasFilters ? () => { setStatusFilter(''); setSearchTerm(''); } : undefined}
-                    >
-                        <div>
-                            <label className="text-xs text-slate-500">Status</label>
-                            <div className="mt-1">
-                                <SearchableSelect
-                                    value={statusFilter}
-                                    onChange={(nextValue) => setStatusFilter(String(nextValue || ''))}
-                                    options={statusOptions}
-                                    placeholder="All statuses"
-                                />
-                            </div>
-                        </div>
-                    </FilterSheet>
-                </div>
-
-                <form method="GET" action={routes?.index} className="mb-6 hidden flex-wrap gap-4 md:flex" onSubmit={handleFilterSubmit}>
-                    <input
-                        type="text"
-                        name="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Search by name, email, or code..."
-                        className="ui-input flex-1"
-                    />
-                    <SearchableSelect
-                        name="status"
-                        value={statusFilter}
-                        onChange={(nextValue) => setStatusFilter(String(nextValue || ''))}
-                        options={statusOptions}
-                        className="min-w-[180px]"
-                        placeholder="All statuses"
-                    />
-                    <button type="submit" className="ui-btn-primary">
-                        Filter
-                    </button>
-                    {hasFilters ? (
-                        <a
-                            href={routes?.index}
-                            data-native="true"
-                            className="ui-btn-secondary"
-                        >
-                            Clear
-                        </a>
-                    ) : null}
-                </form>
-
-                {affiliates.length === 0 ? (
-                    <div className="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
-                        No affiliates found.
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form method="GET" action={routes?.index} className="min-w-0 flex-1 max-w-sm" onSubmit={handleFilterSubmit}>
+                            <input
+                                type="text"
+                                name="search"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Search by name, email, or code..."
+                                className="ui-input w-full"
+                            />
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? affiliates.length} of {pagination?.total ?? affiliates.length} affiliates
+                        </span>
                     </div>
-                ) : (
-                    <>
-                        <DataTable
-                            rows={affiliates}
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="w-40">
+                            <SearchableSelect
+                                name="status"
+                                value={statusFilter}
+                                onChange={(nextValue) => setStatusFilter(String(nextValue || ''))}
+                                options={statusOptions}
+                                placeholder="All statuses"
+                            />
+                        </div>
+                        <a
+                            href={routes?.create}
+                            data-native="true"
+                            className="ui-btn-primary"
+                        >
+                            Add affiliate
+                        </a>
+                    </div>
+                </div>
+
+                <DataTable
+                    framed={false}
+                    rows={affiliates}
+                    emptyMessage="No affiliates found."
                             columns={[
                                 {
                                     key: 'affiliate',
@@ -200,34 +159,11 @@ export default function Index({
                             )}
                         />
 
-                        {pagination?.has_pages ? (
-                            <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-                                {pagination?.previous_url ? (
-                                    <a
-                                        href={pagination.previous_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Previous
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                                )}
-                                {pagination?.next_url ? (
-                                    <a
-                                        href={pagination.next_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Next
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                                )}
-                            </div>
-                        ) : null}
-                    </>
-                )}
+                <Pagination
+                    pagination={pagination}
+                    label="affiliates"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

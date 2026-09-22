@@ -39,11 +39,7 @@ export default function Create({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Payout Management</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Create affiliate payout</h1>
-                </div>
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
                 <a
                     href={routes?.index}
                     data-native="true"

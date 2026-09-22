@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesRep;
 
 use App\Http\Controllers\Controller;
 use App\Models\SalesRepresentative;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -56,15 +57,7 @@ class ChatController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $projects->currentPage(),
-                'last_page' => $projects->lastPage(),
-                'total' => $projects->total(),
-                'from' => $projects->firstItem(),
-                'to' => $projects->lastItem(),
-                'prev_page_url' => $projects->previousPageUrl(),
-                'next_page_url' => $projects->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($projects),
             'routes' => [
                 'projects_index' => route('rep.projects.index'),
             ],

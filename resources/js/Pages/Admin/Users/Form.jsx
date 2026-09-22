@@ -34,8 +34,7 @@ export default function Form({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex items-center justify-between gap-4">
-                <h1 className="text-2xl font-semibold text-slate-900">{pageTitle}</h1>
+            <div className="mb-6 flex items-center justify-end gap-4">
                 <a href={routes?.index} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
                     Back to users
                 </a>

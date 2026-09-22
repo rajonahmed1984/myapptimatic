@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaidHoliday;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,11 +68,7 @@ class PaidHolidayController extends Controller
                 'expectedHoursFullTime' => $expectedHoursFullTime,
                 'expectedHoursPartTime' => $expectedHoursPartTime,
             ],
-            'pagination' => [
-                'previous_url' => $holidays->previousPageUrl(),
-                'next_url' => $holidays->nextPageUrl(),
-                'has_pages' => $holidays->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($holidays),
             'routes' => [
                 'index' => route('admin.hr.paid-holidays.index'),
                 'store' => route('admin.hr.paid-holidays.store'),

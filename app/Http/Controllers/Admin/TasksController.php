@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\TaskQueryService;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -93,16 +94,7 @@ class TasksController extends Controller
                         ] : null,
                     ];
                 })->values()->all(),
-                'pagination' => [
-                    'current_page' => $tasks->currentPage(),
-                    'last_page' => $tasks->lastPage(),
-                    'per_page' => $tasks->perPage(),
-                    'total' => $tasks->total(),
-                    'from' => $tasks->firstItem(),
-                    'to' => $tasks->lastItem(),
-                    'prev_page_url' => $tasks->previousPageUrl(),
-                    'next_page_url' => $tasks->nextPageUrl(),
-                ],
+                'pagination' => PaginationPayload::make($tasks),
                 'routes' => [
                     'index' => route('admin.tasks.index'),
                     'projects' => route('admin.projects.all'),

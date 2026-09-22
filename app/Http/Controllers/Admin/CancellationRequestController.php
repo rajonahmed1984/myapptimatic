@@ -7,10 +7,11 @@ use App\Models\CancellationRequest;
 use App\Models\Setting;
 use App\Services\ClientNotificationService;
 use App\Services\SubscriptionCancellationService;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -54,7 +55,7 @@ class CancellationRequestController extends Controller
 
         return Inertia::render(
             'Admin/CancellationRequests/Index',
-            $this->indexInertiaProps($query->get(), $status, $search)
+            $this->indexInertiaProps($query->paginate(30)->withQueryString(), $status, $search)
         );
     }
 
@@ -124,10 +125,9 @@ class CancellationRequestController extends Controller
     }
 
     /**
-     * @param  Collection<int, CancellationRequest>  $requests
      * @return array<string, mixed>
      */
-    private function indexInertiaProps(Collection $requests, string $status, string $search): array
+    private function indexInertiaProps(LengthAwarePaginator $requests, string $status, string $search): array
     {
         $dateFormat = config('app.datetime_format', 'd-m-Y h:i A');
         $dateOnly = config('app.date_format', 'd-m-Y');
@@ -140,7 +140,8 @@ class CancellationRequestController extends Controller
                 'rejected' => CancellationRequest::where('status', CancellationRequest::STATUS_REJECTED)->count(),
                 'all' => CancellationRequest::count(),
             ],
-            'requests' => $requests->map(function (CancellationRequest $item) use ($dateFormat, $dateOnly) {
+            'pagination' => PaginationPayload::make($requests),
+            'requests' => $requests->getCollection()->map(function (CancellationRequest $item) use ($dateFormat, $dateOnly) {
                 $subscription = $item->subscription;
 
                 return [

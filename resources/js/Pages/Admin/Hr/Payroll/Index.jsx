@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import Pagination from '../../../../Components/Table/Pagination';
 import DataTable from '../../../../Components/Table/DataTable';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
@@ -39,28 +40,34 @@ export default function Index({
                 <Metric title="Paid Holidays (Month)" value={paidHolidaysThisMonth || 0} />
             </div>
 
-            <div className="card p-6">
-                <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
-                    <form method="GET" action={routes?.index} data-native="true" className="flex flex-wrap items-end gap-3">
-                        <div>
-                            <label htmlFor="periodKeyFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
-                            <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="ui-input mt-1 w-40" />
-                        </div>
-                        <div>
-                            <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
-                            <SearchableSelect
-                                name="status"
-                                defaultValue={String(selectedStatus || '')}
-                                options={statusFilterOptions}
-                                className="mt-1 w-40"
-                                placeholder="All"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button type="submit" className="inline-flex items-center justify-center rounded-[10px] bg-emerald-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-500 shadow-sm transition-colors whitespace-nowrap">Apply filter</button>
-                            <a href={routes?.index} data-native="true" className="inline-flex items-center justify-center rounded-[10px] border border-slate-300 bg-white px-4 h-9 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition-colors whitespace-nowrap">Reset</a>
-                        </div>
-                    </form>
+            <div className="card overflow-hidden">
+                <div className="border-b border-slate-200 p-4 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <form method="GET" action={routes?.index} data-native="true" className="flex flex-wrap items-end gap-3">
+                            <div>
+                                <label htmlFor="periodKeyFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Period</label>
+                                <input id="periodKeyFilter" type="month" name="period_key" defaultValue={selectedPeriodKey || ''} className="ui-input mt-1 w-40" />
+                            </div>
+                            <div>
+                                <label htmlFor="periodStatusFilter" className="text-xs uppercase tracking-[0.2em] text-slate-500">Status</label>
+                                <SearchableSelect
+                                    name="status"
+                                    defaultValue={String(selectedStatus || '')}
+                                    options={statusFilterOptions}
+                                    className="mt-1 w-40"
+                                    placeholder="All"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button type="submit" className="inline-flex items-center justify-center rounded-full bg-teal-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-teal-500 shadow-sm transition whitespace-nowrap">Apply filter</button>
+                                <a href={routes?.index} data-native="true" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 h-9 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition whitespace-nowrap">Reset</a>
+                            </div>
+                        </form>
+
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                            Showing {pagination?.from ?? (periods.length > 0 ? 1 : 0)} – {pagination?.to ?? periods.length} of {pagination?.total ?? periods.length} payroll runs
+                        </span>
+                    </div>
 
                     <form method="POST" action={routes?.generate} data-native="true" className="flex flex-wrap items-end gap-2">
                         <input type="hidden" name="_token" value={token} />
@@ -74,11 +81,12 @@ export default function Index({
                                 placeholder="Select period"
                             />
                         </div>
-                        <button className="inline-flex items-center justify-center rounded-[10px] bg-emerald-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-500 shadow-sm transition-colors whitespace-nowrap">Generate</button>
+                        <button className="inline-flex items-center justify-center rounded-full bg-teal-600 px-4 h-9 text-xs sm:text-sm font-semibold text-white hover:bg-teal-500 shadow-sm transition whitespace-nowrap">Generate</button>
                     </form>
                 </div>
 
                 <DataTable
+                    framed={false}
                     rows={periods}
                     emptyMessage="No payroll periods."
                     columns={[
@@ -183,12 +191,11 @@ export default function Index({
                     )}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-between gap-2 text-sm">
-                        <a href={pagination?.previous_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.previous_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Previous</a>
-                        <a href={pagination?.next_url || '#'} data-native="true" className={`rounded border px-3 py-1 ${pagination?.next_url ? 'border-slate-300 text-slate-700' : 'pointer-events-none border-slate-200 text-slate-300'}`}>Next</a>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="payroll runs"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import Pagination from '../../../Components/Table/Pagination';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 
 export default function Index({
     pageTitle = 'Chatbot Leads',
     leads = [],
+    unreadCount = 0,
     filters = {},
     pagination = {},
     routes = {},
@@ -23,6 +25,16 @@ export default function Index({
     const selectedLead = useMemo(() => {
         return leads.find(lead => lead.id === selectedLeadId) || leads[0] || null;
     }, [leads, selectedLeadId]);
+
+    const handleSelectLead = (lead) => {
+        setSelectedLeadId(lead.id);
+        if (!lead.is_read && routes?.toggle_read) {
+            router.post(routes.toggle_read.replace(':id', lead.id), {}, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
+    };
 
     // Parse transcript to structure bubbles
     const parsedMessages = useMemo(() => {
@@ -83,7 +95,6 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-
             <div className="flex flex-col gap-6 lg:flex-row min-h-[600px] h-[calc(100vh-250px)]">
                 {/* Left Pane - Leads List */}
                 <div className="flex flex-col w-full lg:w-[40%] card p-0 overflow-hidden h-full">
@@ -112,6 +123,26 @@ export default function Index({
                         </form>
                     </div>
 
+                    <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-200 bg-slate-50/70 text-xs">
+                        <span className="font-semibold text-slate-600">
+                            {pagination?.total ?? leads.length} leads
+                            {unreadCount > 0 && (
+                                <span className="ml-1.5 inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-teal-700 border border-teal-200">
+                                    {unreadCount} unread
+                                </span>
+                            )}
+                        </span>
+                        {unreadCount > 0 && routes?.mark_all_read && (
+                            <button
+                                type="button"
+                                onClick={() => router.post(routes.mark_all_read, {}, { preserveScroll: true })}
+                                className="font-semibold text-teal-600 hover:text-teal-700 hover:underline text-xs"
+                            >
+                                Mark all as read
+                            </button>
+                        )}
+                    </div>
+
                     {/* Leads list content */}
                     <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
                         {leads.length === 0 ? (
@@ -124,7 +155,7 @@ export default function Index({
                                 return (
                                     <button
                                         key={lead.id}
-                                        onClick={() => setSelectedLeadId(lead.id)}
+                                        onClick={() => handleSelectLead(lead)}
                                         className={`w-full text-left p-4 transition-all ${
                                             active 
                                                 ? 'bg-teal-50/70 border-l-4 border-teal-600' 
@@ -132,7 +163,14 @@ export default function Index({
                                         }`}
                                     >
                                         <div className="flex justify-between items-start gap-2">
-                                            <h4 className="font-semibold text-slate-900 text-sm truncate">{lead.name}</h4>
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                {!lead.is_read && (
+                                                    <span className="h-2 w-2 rounded-full bg-teal-600 shrink-0" title="Unread lead" />
+                                                )}
+                                                <h4 className={`text-sm truncate ${lead.is_read ? 'font-medium text-slate-700' : 'font-bold text-slate-900'}`}>
+                                                    {lead.name}
+                                                </h4>
+                                            </div>
                                             <span className="text-[10px] text-slate-400 whitespace-nowrap font-medium">{lead.created_at_display}</span>
                                         </div>
                                         <div className="text-xs text-slate-500 mt-1 truncate">{lead.email}</div>
@@ -140,6 +178,11 @@ export default function Index({
                                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-800">
                                                 {lead.product_interest}
                                             </span>
+                                            {!lead.is_read && (
+                                                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                    NEW
+                                                </span>
+                                            )}
                                             {lead.phone !== 'N/A' && (
                                                 <span className="text-[10px] text-slate-400 truncate">{lead.phone}</span>
                                             )}
@@ -153,13 +196,11 @@ export default function Index({
                     {/* Pagination */}
                     {pagination?.has_pages && (
                         <div className="p-3 border-t border-slate-200 bg-slate-50/50 flex justify-between items-center gap-2 text-xs">
-                            {pagination?.previous_url ? (
-                                <a href={pagination.previous_url} data-native="true" className="px-3 py-1.5 border border-slate-300 rounded-full font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
-                                    Previous
-                                </a>
-                            ) : (
-                                <span className="px-3 py-1.5 border border-slate-200 rounded-full text-slate-300">Previous</span>
-                            )}
+                            <Pagination
+                                pagination={pagination}
+                                label="leads"
+                                className="border-t border-slate-200 px-4 py-3"
+                            />
                             
                             {pagination?.next_url ? (
                                 <a href={pagination.next_url} data-native="true" className="px-3 py-1.5 border border-slate-300 rounded-full font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600">
@@ -184,6 +225,11 @@ export default function Index({
                                         <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-600 text-white">
                                             {selectedLead.product_interest}
                                         </span>
+                                        {!selectedLead.is_read && (
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                                UNREAD
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
                                         <span className="flex items-center gap-1">
@@ -198,13 +244,28 @@ export default function Index({
                                     </div>
                                 </div>
                                 
-                                <button
-                                    type="button"
-                                    onClick={() => handleDelete(selectedLead.id)}
-                                    className="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition"
-                                >
-                                    Delete Lead
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {routes?.toggle_read && (
+                                        <button
+                                            type="button"
+                                            onClick={() => router.post(routes.toggle_read.replace(':id', selectedLead.id), {}, { preserveScroll: true })}
+                                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                                                selectedLead.is_read
+                                                    ? 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                                                    : 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100'
+                                            }`}
+                                        >
+                                            {selectedLead.is_read ? 'Mark Unread' : 'Mark as Read'}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDelete(selectedLead.id)}
+                                        className="px-3 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-semibold text-rose-600 transition"
+                                    >
+                                        Delete Lead
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Chat messages */}

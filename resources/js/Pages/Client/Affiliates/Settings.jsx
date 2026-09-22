@@ -10,10 +10,6 @@ export default function Settings({ affiliate = {}, routes = {} }) {
 
             <div className="card p-6">
                 <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <div className="section-label">Affiliate</div>
-                        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Settings</h1>
-                    </div>
                     <a href={routes.index} data-native="true" className="text-sm text-slate-500 hover:text-teal-600">
                         Dashboard
                     </a>

@@ -167,7 +167,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 { label: 'Support Tickets', href: '/admin/support-tickets', badge: adminStats?.open_support_tickets },
                 { label: 'Webmail Inbox', href: '/admin/apptimatic-email/inbox', badge: adminStats?.apptimatic_email_unread },
                 { label: 'Compose Email', href: '/admin/apptimatic-email/inbox?compose=new' },
-                { label: 'Chatbot Leads', href: '/admin/chatbot-leads' },
+                { label: 'Chatbot Leads', href: '/admin/chatbot-leads', badge: adminStats?.unread_chatbot_leads },
                 { label: 'Mass Mailer', href: '/admin/mass-mail' },
             ],
         },
@@ -339,14 +339,13 @@ export default function AdminLayout({ children, title, pageHeading }) {
                         <NavMenu label="Income" active={isActiveRoute(currentUrl, '/admin/income*')}>
                             <a href="/admin/income/carrothost" data-native="true" className="block py-1 text-slate-300 hover:text-white">CarrotHost</a>
                             <a href="/admin/income" data-native="true" className="block py-1 text-slate-300 hover:text-white">All income</a>
-                            <a href="/admin/income/create" data-native="true" className="block py-1 text-slate-300 hover:text-white">Add income</a>
-                            <a href="/admin/income-categories" data-native="true" className="block py-1 text-slate-300 hover:text-white">Categories</a>
+                            <a href="/admin/income/categories" data-native="true" className="block py-1 text-slate-300 hover:text-white">Categories</a>
                         </NavMenu>
                         <NavMenu label="Expenses" active={isActiveRoute(currentUrl, '/admin/expenses*')}>
                             <a href="/admin/expenses" data-native="true" className="block py-1 text-slate-300 hover:text-white">All expenses</a>
                             <a href="/admin/expenses/create" data-native="true" className="block py-1 text-slate-300 hover:text-white">One-time expense</a>
                             <a href="/admin/expenses/recurring" data-native="true" className="block py-1 text-slate-300 hover:text-white">Recurring expense</a>
-                            <a href="/admin/expense-categories" data-native="true" className="block py-1 text-slate-300 hover:text-white">Expense Categories</a>
+                            <a href="/admin/expenses/categories" data-native="true" className="block py-1 text-slate-300 hover:text-white">Expense Categories</a>
                         </NavMenu>
                         <NavLink href="/admin/finance/vat" active={isActiveRoute(currentUrl, '/admin/finance/vat*')}>
                             VAT Settings
@@ -421,7 +420,11 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 >
                     Chat
                 </NavLink>
-                <NavLink href="/admin/chatbot-leads" active={isActiveRoute(currentUrl, '/admin/chatbot-leads*')}>
+                <NavLink
+                    href="/admin/chatbot-leads"
+                    active={isActiveRoute(currentUrl, '/admin/chatbot-leads*')}
+                    badge={adminStats?.unread_chatbot_leads}
+                >
                     Chatbot Leads
                 </NavLink>
                 <NavMenu label="Email" active={isActiveRoute(currentUrl, '/admin/apptimatic-email*')}>

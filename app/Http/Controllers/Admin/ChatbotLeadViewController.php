@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChatbotLead;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -35,6 +36,8 @@ class ChatbotLeadViewController extends Controller
                 'phone' => $lead->phone ?? 'N/A',
                 'product_interest' => $lead->product_interest ?? 'General',
                 'transcript' => $lead->transcript ?? '',
+                'is_read' => (bool) $lead->is_read,
+                'read_at' => $lead->read_at?->toIso8601String(),
                 'created_at_display' => $lead->created_at->timezone('Asia/Dhaka')->format('M d, Y h:i A'),
                 'created_at' => $lead->created_at->toIso8601String(),
             ];
@@ -43,19 +46,38 @@ class ChatbotLeadViewController extends Controller
         return Inertia::render('Admin/ChatbotLeads/Index', [
             'pageTitle' => 'Chatbot Leads',
             'leads' => $leads->items(),
+            'unreadCount' => ChatbotLead::where('is_read', false)->count(),
             'filters' => [
                 'search' => $search,
             ],
-            'pagination' => [
-                'has_pages' => $leads->hasPages(),
-                'previous_url' => $leads->previousPageUrl(),
-                'next_url' => $leads->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($leads),
             'routes' => [
                 'index' => route('admin.chatbot-leads.index'),
                 'destroy' => route('admin.chatbot-leads.destroy', ':id'),
-            ]
+                'toggle_read' => route('admin.chatbot-leads.toggle-read', ':id'),
+                'mark_all_read' => route('admin.chatbot-leads.mark-all-read'),
+            ],
         ]);
+    }
+
+    public function toggleRead($id)
+    {
+        $lead = ChatbotLead::findOrFail($id);
+        $lead->is_read = ! $lead->is_read;
+        $lead->read_at = $lead->is_read ? now() : null;
+        $lead->save();
+
+        return back()->with('status', $lead->is_read ? 'Lead marked as read.' : 'Lead marked as unread.');
+    }
+
+    public function markAllRead()
+    {
+        ChatbotLead::where('is_read', false)->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+
+        return back()->with('status', 'All chatbot leads marked as read.');
     }
 
     public function destroy($id)

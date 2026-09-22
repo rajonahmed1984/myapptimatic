@@ -2,6 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusBadgeClass = (status) =>
@@ -13,6 +14,7 @@ export default function Index({
     pageTitle = 'Sales Representatives',
     filters = {},
     reps = [],
+    pagination = {},
     routes = {},
 }) {
     const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
@@ -24,40 +26,42 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form
+                            method="GET"
+                            action={routes?.index}
+                            className="min-w-0 flex-1 max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search sales reps..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? reps.length} of {pagination?.total ?? reps.length} sales reps
+                        </span>
+                    </div>
+                    <a
+                        href={routes?.create}
+                        data-native="true"
+                        className="ui-btn-primary"
+                    >
+                        Add sales rep
+                    </a>
                 </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className="ui-btn-primary"
-                >
-                    Add sales rep
-                </a>
-            </div>
 
-            <div className="card overflow-hidden">
                 <DataTable
+                    framed={false}
                     rows={reps}
                     emptyMessage="No sales representatives yet."
                     columns={[
@@ -112,6 +116,12 @@ export default function Index({
                             </div>
                         </MobileCard>
                     )}
+                />
+
+                <Pagination
+                    pagination={pagination}
+                    label="sales reps"
+                    className="border-t border-slate-200 px-4 py-3"
                 />
             </div>
         </>

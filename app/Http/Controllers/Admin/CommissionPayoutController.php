@@ -8,6 +8,7 @@ use App\Models\CommissionPayout;
 use App\Models\PaymentMethod;
 use App\Models\SalesRepresentative;
 use App\Services\CommissionService;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -219,11 +220,7 @@ class CommissionPayoutController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'has_pages' => $payouts->hasPages(),
-                'previous_url' => $payouts->previousPageUrl(),
-                'next_url' => $payouts->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($payouts),
         ];
     }
 

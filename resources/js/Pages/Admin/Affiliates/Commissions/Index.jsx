@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import Pagination from '../../../../Components/Table/Pagination';
 import DataTable from '../../../../Components/Table/DataTable';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
@@ -63,11 +64,7 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Commission Management</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Affiliate commissions</h1>
-                </div>
+            <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
                 <a
                     href={routes?.affiliates_index}
                     data-native="true"
@@ -77,70 +74,78 @@ export default function Index({
                 </a>
             </div>
 
-            <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-6 flex flex-wrap gap-4">
-                    <SearchableSelect
-                        name="affiliate_id"
-                        defaultValue={String(filters?.affiliate_id ?? '')}
-                        options={affiliateOptions}
-                        className="flex-1"
-                        placeholder="All affiliates"
-                    />
-                    <SearchableSelect
-                        name="status"
-                        defaultValue={String(filters?.status ?? '')}
-                        options={statusOptions}
-                        className="min-w-[180px]"
-                        placeholder="All statuses"
-                    />
-                    <button
-                        type="submit"
-                        className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white"
-                    >
-                        Filter
-                    </button>
-                    {hasFilters ? (
-                        <a
-                            href={routes?.index}
-                            data-native="true"
-                            className="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600"
-                        >
-                            Clear
-                        </a>
-                    ) : null}
-                </form>
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        Showing {pagination?.from ?? 1} – {pagination?.to ?? commissions.length} of {pagination?.total ?? commissions.length} commissions
+                    </span>
 
-                {commissions.length === 0 ? (
-                    <div className="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
-                        No commissions found.
-                    </div>
-                ) : (
-                    <>
-                        <form method="POST" action={routes?.bulk_approve} data-native="true" className="mb-4">
-                            <input type="hidden" name="_token" value={csrfToken} />
-                            {selectedIds.map((id) => (
-                                <input key={id} type="hidden" name="commission_ids[]" value={id} />
-                            ))}
-                            <div className="flex items-center justify-between gap-4">
-                                <button
-                                    type="button"
-                                    onClick={toggleAll}
-                                    className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                >
-                                    Toggle pending
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={selectedIds.length === 0}
-                                    className="rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    Approve selected ({selectedIds.length})
-                                </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <form method="GET" action={routes?.index} data-native="true" className="flex flex-wrap items-center gap-2">
+                            <div className="w-52">
+                                <SearchableSelect
+                                    name="affiliate_id"
+                                    defaultValue={String(filters?.affiliate_id ?? '')}
+                                    options={affiliateOptions}
+                                    placeholder="All affiliates"
+                                />
                             </div>
+                            <div className="w-40">
+                                <SearchableSelect
+                                    name="status"
+                                    defaultValue={String(filters?.status ?? '')}
+                                    options={statusOptions}
+                                    placeholder="All statuses"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="ui-btn-secondary"
+                            >
+                                Filter
+                            </button>
+                            {hasFilters ? (
+                                <a
+                                    href={routes?.index}
+                                    data-native="true"
+                                    className="ui-btn-secondary"
+                                >
+                                    Clear
+                                </a>
+                            ) : null}
                         </form>
+                    </div>
+                </div>
 
-                        <DataTable
-                            rows={commissions}
+                <div className="border-b border-slate-200 bg-slate-50/50 px-4 py-3">
+                    <form method="POST" action={routes?.bulk_approve} data-native="true">
+                        <input type="hidden" name="_token" value={csrfToken} />
+                        {selectedIds.map((id) => (
+                            <input key={id} type="hidden" name="commission_ids[]" value={id} />
+                        ))}
+                        <div className="flex items-center justify-between gap-4">
+                            <button
+                                type="button"
+                                onClick={toggleAll}
+                                className="ui-btn-secondary"
+                            >
+                                Toggle pending
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={selectedIds.length === 0}
+                                className="ui-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Approve selected ({selectedIds.length})
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <DataTable
+                    framed={false}
+                    rows={commissions}
+                    emptyMessage="No commissions found."
                             columns={[
                                 {
                                     key: 'select',
@@ -227,34 +232,11 @@ export default function Index({
                             )}
                         />
 
-                        {pagination?.has_pages ? (
-                            <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-                                {pagination?.previous_url ? (
-                                    <a
-                                        href={pagination.previous_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Previous
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                                )}
-                                {pagination?.next_url ? (
-                                    <a
-                                        href={pagination.next_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Next
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                                )}
-                            </div>
-                        ) : null}
-                    </>
-                )}
+                <Pagination
+                    pagination={pagination}
+                    label="commissions"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

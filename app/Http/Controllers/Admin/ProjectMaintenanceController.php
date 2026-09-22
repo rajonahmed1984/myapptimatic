@@ -8,6 +8,7 @@ use App\Models\ProjectMaintenance;
 use App\Models\SalesRepresentative;
 use App\Models\Setting;
 use App\Services\MaintenanceBillingService;
+use App\Support\PaginationPayload;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -57,7 +58,11 @@ class ProjectMaintenanceController extends Controller
             'maintenances' => $maintenances->getCollection()
                 ->map(fn (ProjectMaintenance $maintenance) => $this->serializeMaintenanceListItem($maintenance))
                 ->values(),
-            'pagination' => $this->paginationPayload($maintenances),
+            'pagination' => $this->paginationPayload(
+                $maintenances,
+                route('admin.project-maintenances.index'),
+                ['search' => $search]
+            ),
             'routes' => [
                 'index' => route('admin.project-maintenances.index'),
                 'create' => route('admin.project-maintenances.create'),
@@ -390,19 +395,13 @@ class ProjectMaintenanceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function paginationPayload(LengthAwarePaginator $paginator): array
+    /**
+     * @param  array<string, mixed>  $query  filters every page link should keep
+     * @return array<string, mixed>
+     */
+    private function paginationPayload(LengthAwarePaginator $paginator, ?string $path = null, array $query = []): array
     {
-        return [
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'per_page' => $paginator->perPage(),
-            'total' => $paginator->total(),
-            'from' => $paginator->firstItem(),
-            'to' => $paginator->lastItem(),
-            'previous_url' => $paginator->previousPageUrl(),
-            'next_url' => $paginator->nextPageUrl(),
-            'has_pages' => $paginator->hasPages(),
-        ];
+        return PaginationPayload::make($paginator, $path, $query);
     }
 
     /**

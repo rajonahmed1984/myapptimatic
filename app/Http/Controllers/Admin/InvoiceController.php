@@ -24,6 +24,7 @@ use App\Services\InvoiceVatService;
 use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
 use App\Support\Branding;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -1328,7 +1329,11 @@ class InvoiceController extends Controller
             'invoices' => $paginator->getCollection()
                 ->map(fn (Invoice $invoice) => $this->serializeInvoiceListItem($invoice))
                 ->values(),
-            'pagination' => $this->paginationPayload($paginator),
+            'pagination' => $this->paginationPayload(
+                $paginator,
+                url()->current(),
+                ['search' => $search]
+            ),
             'routes' => [
                 'index' => route('admin.invoices.index'),
                 'paid' => route('admin.invoices.paid'),
@@ -1861,19 +1866,13 @@ class InvoiceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function paginationPayload(LengthAwarePaginator $paginator): array
+    /**
+     * @param  array<string, mixed>  $query  filters every page link should keep
+     * @return array<string, mixed>
+     */
+    private function paginationPayload(LengthAwarePaginator $paginator, ?string $path = null, array $query = []): array
     {
-        return [
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'per_page' => $paginator->perPage(),
-            'total' => $paginator->total(),
-            'from' => $paginator->firstItem(),
-            'to' => $paginator->lastItem(),
-            'previous_url' => $paginator->previousPageUrl(),
-            'next_url' => $paginator->nextPageUrl(),
-            'has_pages' => $paginator->hasPages(),
-        ];
+        return PaginationPayload::make($paginator, $path, $query);
     }
 
     public function bulkRemind(Request $request): RedirectResponse

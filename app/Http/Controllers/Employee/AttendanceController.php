@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeAttendance;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -55,16 +56,7 @@ class AttendanceController extends Controller
                 'leave' => (int) ($statusSummary['leave'] ?? 0),
                 'half_day' => (int) ($statusSummary['half_day'] ?? 0),
             ],
-            'pagination' => [
-                'current_page' => $attendances->currentPage(),
-                'last_page' => $attendances->lastPage(),
-                'per_page' => $attendances->perPage(),
-                'total' => $attendances->total(),
-                'from' => $attendances->firstItem(),
-                'to' => $attendances->lastItem(),
-                'prev_page_url' => $attendances->previousPageUrl(),
-                'next_page_url' => $attendances->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($attendances),
             'routes' => [
                 'index' => route('employee.attendance.index'),
             ],

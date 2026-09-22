@@ -20,6 +20,7 @@ use App\Models\UserSession;
 use App\Services\CommissionService;
 use App\Services\SalesRepNotificationService;
 use App\Support\AjaxResponse;
+use App\Support\PaginationPayload;
 use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -65,7 +66,8 @@ class SalesRepresentativeController extends Controller
                 'maintenances',
             ])
             ->orderBy('name')
-            ->get();
+            ->paginate(30)
+            ->withQueryString();
 
         $commissionService->ensureProjectEarningsForRepIds($reps->pluck('id')->all());
 
@@ -88,7 +90,8 @@ class SalesRepresentativeController extends Controller
             'filters' => [
                 'search' => $search,
             ],
-            'reps' => $this->serializeRepIndexRows($reps, $totals, $loginStatuses),
+            'reps' => $this->serializeRepIndexRows($reps->getCollection(), $totals, $loginStatuses),
+            'pagination' => PaginationPayload::make($reps),
             'routes' => [
                 'index' => route('admin.sales-reps.index'),
                 'create' => route('admin.sales-reps.create'),

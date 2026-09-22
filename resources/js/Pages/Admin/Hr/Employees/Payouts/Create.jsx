@@ -31,8 +31,6 @@ export default function Create({
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <div className="section-label">HR</div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Create payout</h1>
                     <div className="text-sm text-slate-500">Select an employee and payable projects to include.</div>
                 </div>
                 <a href={routes?.employeesIndex} data-native="true" className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700">Back to employees</a>

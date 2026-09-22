@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
@@ -243,37 +244,39 @@ export default function Index({
                 </div>
             ) : null}
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        id="licensesSearchForm"
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full max-w-sm">
+            <div id="licensesTable" className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form
+                            id="licensesSearchForm"
+                            method="GET"
+                            action={routes?.index}
+                            className="min-w-0 flex-1 max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search licenses..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? licenses.length} of {pagination?.total ?? licenses.length} licenses
+                        </span>
+                    </div>
+                    <a href={routes?.manage_subscriptions} data-native="true" className={BTN.primary}>
+                        Manage in Subscriptions
+                    </a>
                 </div>
-                <a href={routes?.manage_subscriptions} data-native="true" className={BTN.primary}>
-                    Manage in Subscriptions
-                </a>
-            </div>
 
-            <div id="licensesTable">
                 <DataTable
+                    framed={false}
                     rows={licenses}
                     emptyMessage="No licenses yet."
                     columns={[
@@ -417,32 +420,11 @@ export default function Index({
                     }}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                        {pagination?.previous_url ? (
-                            <a
-                                href={pagination.previous_url}
-                                data-native="true"
-                                className={BTN.secondary}
-                            >
-                                Previous
-                            </a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                        )}
-                        {pagination?.next_url ? (
-                            <a
-                                href={pagination.next_url}
-                                data-native="true"
-                                className={BTN.secondary}
-                            >
-                                Next
-                            </a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                        )}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="licenses"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

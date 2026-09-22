@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
@@ -27,6 +28,7 @@ export default function Index({
     routes = {},
     filter_links = [],
     payment_proofs = [],
+    pagination = {},
 }) {
     const { csrf_token: csrfToken = '' } = usePage().props || {};
     const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
@@ -38,56 +40,57 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex-1">
-                    <form
-                        id="paymentProofsSearchForm"
-                        method="GET"
-                        action={routes?.index}
-                        className="flex items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <input type="hidden" name="status" value={status} />
-                        <div className="relative w-full max-w-sm">
+            <div id="paymentProofsTable" className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <div className="flex flex-1 flex-wrap items-center gap-3">
+                        <form
+                            id="paymentProofsSearchForm"
+                            method="GET"
+                            action={routes?.index}
+                            className="min-w-0 flex-1 max-w-sm"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                submitSearch();
+                            }}
+                        >
+                            <input type="hidden" name="status" value={status} />
                             <input
                                 type="text"
                                 name="search"
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search payment proofs..."
-                                className="ui-input"
+                                className="ui-input w-full"
                             />
-                        </div>
-                    </form>
+                        </form>
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {pagination?.from ?? 1} – {pagination?.to ?? payment_proofs.length} of {pagination?.total ?? payment_proofs.length} submissions
+                        </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {filter_links.map((filter) => (
+                            <a
+                                key={filter.key}
+                                href={filter.href}
+                                data-native="true"
+                                className={
+                                    filter.active
+                                        ? 'rounded-full bg-slate-900 px-3 py-1 text-white'
+                                        : 'rounded-full border border-slate-300 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600'
+                                }
+                            >
+                                {filter.label}
+                            </a>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
-                    {filter_links.map((filter) => (
-                        <a
-                            key={filter.key}
-                            href={filter.href}
-                            data-native="true"
-                            className={
-                                filter.active
-                                    ? 'rounded-full bg-slate-900 px-3 py-1 text-white'
-                                    : 'rounded-full border border-slate-300 px-3 py-1 text-slate-600 hover:border-teal-300 hover:text-teal-600'
-                            }
-                        >
-                            {filter.label}
-                        </a>
-                    ))}
-                </div>
-            </div>
 
-            <div id="paymentProofsTable">
                 {payment_proofs.length === 0 ? (
-                    <div className="card p-6 text-sm text-slate-500">No manual payment submissions found.</div>
+                    <div className="p-6 text-sm text-slate-500">No manual payment submissions found.</div>
                 ) : (
-                    <div className="card overflow-hidden">
-                        <DataTable
-                            rows={payment_proofs}
+                    <DataTable
+                        framed={false}
+                        rows={payment_proofs}
                             columns={[
                                 {
                                     key: 'invoice',
@@ -182,8 +185,13 @@ export default function Index({
                                 </MobileCard>
                             )}
                         />
-                    </div>
                 )}
+
+                <Pagination
+                    pagination={pagination}
+                    label="submissions"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

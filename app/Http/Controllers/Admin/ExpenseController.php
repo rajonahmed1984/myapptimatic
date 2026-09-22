@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Services\ExpenseEntryService;
 use App\Services\ExpenseInvoiceService;
 use App\Support\Currency;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -127,9 +128,10 @@ class ExpenseController extends Controller
         );
     }
 
-    public function create(ExpenseInvoiceService $invoiceService): InertiaResponse
+    public function create(Request $request, ExpenseInvoiceService $invoiceService): InertiaResponse
     {
         $invoiceService->syncOverdueStatuses();
+        $search = trim((string) $request->query('search', ''));
 
         $categories = ExpenseCategory::query()
             ->where('status', 'active')
@@ -217,16 +219,11 @@ class ExpenseController extends Controller
                 'name' => $category->name,
             ])->values(),
             'oneTimeExpenses' => $oneTimeItems,
-            'pagination' => [
-                'has_pages' => $oneTimeExpenses->hasPages(),
-                'current_page' => $oneTimeExpenses->currentPage(),
-                'last_page' => $oneTimeExpenses->lastPage(),
-                'from' => $oneTimeExpenses->firstItem(),
-                'to' => $oneTimeExpenses->lastItem(),
-                'total' => $oneTimeExpenses->total(),
-                'prev_page_url' => $oneTimeExpenses->previousPageUrl(),
-                'next_page_url' => $oneTimeExpenses->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make(
+                $oneTimeExpenses,
+                route('admin.expenses.index'),
+                ['search' => $search]
+            ),
             'pagination_links' => $paginationLinks,
             'paymentMethods' => $paymentMethods->map(fn ($method) => [
                 'code' => $method->code,
@@ -374,7 +371,7 @@ class ExpenseController extends Controller
             $invoiceService->createForExpense($expense, $request->user()->id);
         }
 
-        return redirect()->route('admin.expenses.create')
+        return redirect()->route('admin.expenses.index')
             ->with('status', 'Expense recorded.');
     }
 
@@ -486,6 +483,7 @@ class ExpenseController extends Controller
             ],
             'expenses' => $expenseRows,
             'pagination_links' => $paginationLinks,
+            'pagination' => PaginationPayload::make($expenses),
         ];
     }
 

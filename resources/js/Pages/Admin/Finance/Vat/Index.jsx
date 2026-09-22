@@ -221,37 +221,33 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Finance</div>
-                    <div className="text-2xl font-semibold text-slate-900">{heading}</div>
-                    <div className="mt-1 text-sm text-slate-500">{subheading}</div>
-                </div>
-                <a
-                    href={routes?.reports}
-                    data-native="true"
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                >
-                    View Reports
-                </a>
-            </div>
-
             <div className="card p-6">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="section-label">Effective Year VAT</div>
-                        <div className="text-sm text-slate-500">Month-to-month and year-to-year VAT performance.</div>
+                        <div className="text-sm font-semibold text-slate-800">Effective Year VAT</div>
+                        <div className="text-xs text-slate-500">Month-to-month and year-to-year VAT performance.</div>
                     </div>
-                    <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
-                        <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Effective year</label>
-                        <SearchableSelect
-                            name="effective_year"
-                            defaultValue={String(vat_analytics?.effective_year || '')}
-                            onChange={() => effectiveYearFormRef.current?.submit()}
-                            options={effectiveYearOptions}
-                            placeholder="Select year"
-                        />
-                    </form>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
+                            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Effective year</label>
+                            <SearchableSelect
+                                name="effective_year"
+                                defaultValue={String(vat_analytics?.effective_year || '')}
+                                onChange={() => effectiveYearFormRef.current?.submit()}
+                                options={effectiveYearOptions}
+                                placeholder="Select year"
+                            />
+                        </form>
+                        {routes?.reports && (
+                            <a
+                                href={routes.reports}
+                                data-native="true"
+                                className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                            >
+                                View Reports
+                            </a>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">

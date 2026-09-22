@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeWorkSession;
 use App\Services\EmployeeWorkSummaryService;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -99,16 +100,7 @@ class TimesheetController extends Controller
             'selected_month' => $selectedMonth,
             'subtotal_estimated' => (float) $dailyLogs->getCollection()->sum(fn ($log) => (float) ($log->estimated_amount ?? 0)),
             'subtotal_currency' => $dailyLogs->getCollection()->first()?->currency ?? 'BDT',
-            'pagination' => [
-                'current_page' => $dailyLogs->currentPage(),
-                'last_page' => $dailyLogs->lastPage(),
-                'per_page' => $dailyLogs->perPage(),
-                'total' => $dailyLogs->total(),
-                'from' => $dailyLogs->firstItem(),
-                'to' => $dailyLogs->lastItem(),
-                'prev_page_url' => $dailyLogs->previousPageUrl(),
-                'next_page_url' => $dailyLogs->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($dailyLogs),
             'routes' => [
                 'index' => route('employee.timesheets.index'),
                 'dashboard' => route('employee.dashboard'),

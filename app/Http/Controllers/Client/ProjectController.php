@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectMessageRead;
+use App\Support\PaginationPayload;
 use App\Support\TaskSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -59,16 +60,7 @@ class ProjectController extends Controller
                     })->values()->all(),
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $projects->currentPage(),
-                'last_page' => $projects->lastPage(),
-                'per_page' => $projects->perPage(),
-                'total' => $projects->total(),
-                'from' => $projects->firstItem(),
-                'to' => $projects->lastItem(),
-                'prev_page_url' => $projects->previousPageUrl(),
-                'next_page_url' => $projects->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($projects),
         ]);
     }
 

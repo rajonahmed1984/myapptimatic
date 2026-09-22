@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
@@ -20,16 +21,33 @@ export default function Index({ pageTitle = 'Ownership Transfers', transfers = [
     const { props } = usePage();
     const csrf = props?.csrf_token || '';
 
+    const totalTransfers = Number(pagination?.total ?? transfers.length);
+    const fromTransfer = pagination?.from !== undefined && pagination?.from !== null
+        ? pagination.from
+        : (totalTransfers > 0 ? 1 : 0);
+    const toTransfer = pagination?.to !== undefined && pagination?.to !== null
+        ? pagination.to
+        : transfers.length;
+
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex items-center justify-between">
-                <div className="text-2xl font-semibold text-slate-900">Ownership Transfers</div>
-            </div>
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        {totalTransfers > 0 ? (
+                            <>
+                                Showing <span className="font-semibold text-slate-700">{fromTransfer}</span> – <span className="font-semibold text-slate-700">{toTransfer}</span> of <span className="font-semibold text-slate-700">{totalTransfers}</span> transfers
+                            </>
+                        ) : (
+                            'No transfers'
+                        )}
+                    </span>
+                </div>
 
-            <div className="card overflow-hidden p-0">
                 <DataTable
+                    framed={false}
                     rows={transfers}
                     emptyMessage="No ownership transfers yet."
                     columns={[
@@ -92,20 +110,11 @@ export default function Index({ pageTitle = 'Ownership Transfers', transfers = [
                     )}
                 />
 
-                {pagination?.has_pages ? (
-                    <div className="flex items-center justify-end gap-2 p-4 text-sm">
-                        {pagination?.previous_url ? (
-                            <a href={pagination.previous_url} data-native="true" className={BTN.secondary}>Previous</a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                        )}
-                        {pagination?.next_url ? (
-                            <a href={pagination.next_url} data-native="true" className={BTN.secondary}>Next</a>
-                        ) : (
-                            <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                        )}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="transfers"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

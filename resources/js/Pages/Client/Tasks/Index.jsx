@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (status) => {
@@ -36,8 +37,8 @@ export default function Index({ status_filter = '', search = '', status_counts =
         <>
             <Head title="Tasks" />
 
-            <div id="tasksIndex" className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+            <div id="tasksIndex">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <div className="section-label">Tasks</div>
                         <div className="text-sm text-slate-500">All tasks you are allowed to see.</div>
@@ -52,7 +53,8 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                     <div className="flex flex-wrap gap-2 text-xs">
                         {filters.map((filter) => {
                             const isActive = status_filter === filter.key || (filter.key === '' && status_filter === '');
@@ -103,8 +105,9 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     </form>
                 </div>
 
-                <div className="mt-6">
+                <div>
                     <DataTable
+                        framed={false}
                         rows={tasks}
                         emptyMessage="No tasks found."
                         columns={[
@@ -229,25 +232,12 @@ export default function Index({ status_filter = '', search = '', status_counts =
                     />
                 </div>
 
-                {pagination.last_page > 1 ? (
-                    <div className="mt-4 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">
-                            Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            {pagination.prev_page_url ? (
-                                <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">
-                                    Previous
-                                </a>
-                            ) : null}
-                            {pagination.next_page_url ? (
-                                <a href={pagination.next_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">
-                                    Next
-                                </a>
-                            ) : null}
-                        </div>
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="tasks"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
+                </div>
             </div>
         </>
     );

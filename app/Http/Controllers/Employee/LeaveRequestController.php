@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,16 +41,7 @@ class LeaveRequestController extends Controller
                 'id' => $type->id,
                 'name' => $type->name,
             ])->values()->all(),
-            'pagination' => [
-                'current_page' => $leaveRequests->currentPage(),
-                'last_page' => $leaveRequests->lastPage(),
-                'per_page' => $leaveRequests->perPage(),
-                'total' => $leaveRequests->total(),
-                'from' => $leaveRequests->firstItem(),
-                'to' => $leaveRequests->lastItem(),
-                'prev_page_url' => $leaveRequests->previousPageUrl(),
-                'next_page_url' => $leaveRequests->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($leaveRequests),
             'routes' => [
                 'index' => route('employee.leave-requests.index'),
                 'store' => route('employee.leave-requests.store'),

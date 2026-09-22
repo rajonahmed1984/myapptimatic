@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
+import Pagination from '../../../../Components/Table/Pagination';
 import DataTable from '../../../../Components/Table/DataTable';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
@@ -26,54 +27,52 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <div className="section-label">Payout Management</div>
-                    <h1 className="mt-2 text-2xl font-semibold text-slate-900">Affiliate payouts</h1>
-                </div>
-                <a
-                    href={routes?.create}
-                    data-native="true"
-                    className="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
-                >
-                    Create payout
-                </a>
-            </div>
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        Showing {pagination?.from ?? 1} – {pagination?.to ?? payouts.length} of {pagination?.total ?? payouts.length} payouts
+                    </span>
 
-            <div className="card p-6">
-                <form method="GET" action={routes?.index} data-native="true" className="mb-6 flex flex-wrap gap-4">
-                    <SearchableSelect
-                        name="status"
-                        defaultValue={String(filters?.status ?? '')}
-                        options={statusOptions}
-                        className="min-w-[180px]"
-                        placeholder="All statuses"
-                    />
-                    <button
-                        type="submit"
-                        className="rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white"
-                    >
-                        Filter
-                    </button>
-                    {filters?.status ? (
+                    <div className="flex flex-wrap items-center gap-3">
+                        <form method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
+                            <div className="w-44">
+                                <SearchableSelect
+                                    name="status"
+                                    defaultValue={String(filters?.status ?? '')}
+                                    options={statusOptions}
+                                    placeholder="All statuses"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="ui-btn-secondary"
+                            >
+                                Filter
+                            </button>
+                            {filters?.status ? (
+                                <a
+                                    href={routes?.index}
+                                    data-native="true"
+                                    className="ui-btn-secondary"
+                                >
+                                    Clear
+                                </a>
+                            ) : null}
+                        </form>
                         <a
-                            href={routes?.index}
+                            href={routes?.create}
                             data-native="true"
-                            className="rounded-full border border-slate-300 px-6 py-2 text-sm font-semibold text-slate-600"
+                            className="ui-btn-primary"
                         >
-                            Clear
+                            Create payout
                         </a>
-                    ) : null}
-                </form>
-
-                {payouts.length === 0 ? (
-                    <div className="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
-                        No payouts found.
                     </div>
-                ) : (
-                    <>
-                        <DataTable
-                            rows={payouts}
+                </div>
+
+                <DataTable
+                    framed={false}
+                    rows={payouts}
+                    emptyMessage="No payouts found."
                             columns={[
                                 { key: 'number', header: 'Payout #', cellClassName: 'font-semibold text-slate-900', render: (payout) => payout.payout_number },
                                 { key: 'affiliate', header: 'Affiliate', render: (payout) => payout.affiliate_name },
@@ -116,34 +115,11 @@ export default function Index({
                             )}
                         />
 
-                        {pagination?.has_pages ? (
-                            <div className="mt-6 flex items-center justify-end gap-2 text-sm">
-                                {pagination?.previous_url ? (
-                                    <a
-                                        href={pagination.previous_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Previous
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                                )}
-                                {pagination?.next_url ? (
-                                    <a
-                                        href={pagination.next_url}
-                                        data-native="true"
-                                        className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                    >
-                                        Next
-                                    </a>
-                                ) : (
-                                    <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                                )}
-                            </div>
-                        ) : null}
-                    </>
-                )}
+                <Pagination
+                    pagination={pagination}
+                    label="payouts"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

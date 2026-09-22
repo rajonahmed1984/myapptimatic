@@ -8,6 +8,7 @@ use App\Services\ClientNotificationService;
 use App\Services\GeminiService;
 use App\Services\SupportTicketAiService;
 use App\Support\AjaxResponse;
+use App\Support\PaginationPayload;
 use App\Support\SystemLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -62,16 +63,7 @@ class SupportTicketController extends Controller
             })->values()->all(),
             'status' => $status,
             'status_counts' => $statusCounts,
-            'pagination' => [
-                'current_page' => $tickets->currentPage(),
-                'last_page' => $tickets->lastPage(),
-                'per_page' => $tickets->perPage(),
-                'total' => $tickets->total(),
-                'from' => $tickets->firstItem(),
-                'to' => $tickets->lastItem(),
-                'prev_page_url' => $tickets->previousPageUrl(),
-                'next_page_url' => $tickets->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($tickets),
             'routes' => [
                 'index' => route('support.support-tickets.index'),
             ],

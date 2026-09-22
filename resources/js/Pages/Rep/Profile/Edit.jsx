@@ -17,9 +17,6 @@ export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
             <Head title="Profile" />
 
             <div className="card p-6">
-                <div className="section-label">Account</div>
-                <h1 className="mt-2 text-2xl font-semibold text-slate-900">Profile & security</h1>
-                <p className="mt-2 text-sm text-slate-500">Update your name, contact details, profile photo, and password.</p>
 
                 <form method="POST" action={form?.action} className="mt-6 space-y-6" encType="multipart/form-data" data-native="true">
                     <input type="hidden" name="_token" value={csrfToken} />

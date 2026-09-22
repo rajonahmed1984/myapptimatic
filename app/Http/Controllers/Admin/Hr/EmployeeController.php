@@ -23,6 +23,7 @@ use App\Models\SystemLog;
 use App\Models\User;
 use App\Services\EmployeeWorkSummaryService;
 use App\Support\Currency;
+use App\Support\PaginationPayload;
 use App\Support\PublicStorageUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -102,11 +103,7 @@ class EmployeeController extends Controller
                     ],
                 ];
             })->values(),
-            'pagination' => [
-                'previous_url' => $employees->previousPageUrl(),
-                'next_url' => $employees->nextPageUrl(),
-                'has_pages' => $employees->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($employees),
             'routes' => [
                 'index' => route('admin.hr.employees.index'),
                 'create' => route('admin.hr.employees.create'),

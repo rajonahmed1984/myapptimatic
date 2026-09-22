@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../../Components/Table/DataTable';
+import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 
 export default function Index({ pageTitle = 'Leave Types', types = [], pagination = {}, editingType = null, routes = {} }) {
@@ -49,8 +50,16 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
                     ) : null}
                 </div>
 
-                <div className="card p-6 lg:col-span-3">
+                <div className="card overflow-hidden lg:col-span-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                        <h3 className="font-semibold text-slate-800 text-sm">Leave Types</h3>
+                        <span className="text-xs text-slate-500">
+                            Showing {pagination?.from ?? (types.length > 0 ? 1 : 0)} – {pagination?.to ?? types.length} of {pagination?.total ?? types.length} leave types
+                        </span>
+                    </div>
+
                     <DataTable
+                        framed={false}
                         rows={types}
                         emptyMessage="No leave types yet."
                         columns={[
@@ -101,12 +110,11 @@ export default function Index({ pageTitle = 'Leave Types', types = [], paginatio
                         )}
                     />
 
-                    {pagination?.has_pages ? (
-                        <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                            {pagination.previous_url ? <a href={pagination.previous_url} data-native="true" className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Previous</a> : <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>}
-                            {pagination.next_url ? <a href={pagination.next_url} data-native="true" className="rounded-full border border-slate-300 px-3 py-1 text-slate-700">Next</a> : <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>}
-                        </div>
-                    ) : null}
+                    <Pagination
+                        pagination={pagination}
+                        label="leave types"
+                        className="border-t border-slate-200 px-4 py-3"
+                    />
                 </div>
             </div>
         </>

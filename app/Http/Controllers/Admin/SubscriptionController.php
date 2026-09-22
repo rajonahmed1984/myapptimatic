@@ -13,6 +13,7 @@ use App\Models\Subscription;
 use App\Services\AccessBlockService;
 use App\Services\BillingService;
 use App\Support\AjaxResponse;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -654,11 +655,11 @@ class SubscriptionController extends Controller
                     ],
                 ];
             })->all(),
-            'pagination' => [
-                'has_pages' => $subscriptions->hasPages(),
-                'previous_url' => $subscriptions->previousPageUrl(),
-                'next_url' => $subscriptions->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make(
+                $subscriptions,
+                route('admin.subscriptions.index'),
+                ['search' => $search]
+            ),
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\EmployeeWorkSession;
 use App\Models\PaidHoliday;
 use App\Services\EmployeeWorkSummaryService;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -178,11 +179,7 @@ class TimesheetController extends Controller
                     'estimated_amount' => number_format((float) ($log->estimated_amount ?? 0), 2),
                 ];
             })->values(),
-            'pagination' => [
-                'previous_url' => $dailyLogs->previousPageUrl(),
-                'next_url' => $dailyLogs->nextPageUrl(),
-                'has_pages' => $dailyLogs->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($dailyLogs),
             'routes' => [
                 'index' => route('admin.hr.timesheets.index'),
             ],

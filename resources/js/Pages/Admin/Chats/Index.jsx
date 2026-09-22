@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const BTN = {
@@ -27,18 +28,16 @@ export default function Index({
     routes = {},
 }) {
     const rows = projects?.data ?? [];
-    const links = projects?.links ?? [];
 
     return (
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div className="section-label">Chat</div>
-                        <div className="text-sm text-slate-500">Select a project to open chat.</div>
-                    </div>
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                        Showing {projects?.from ?? 1} – {projects?.to ?? rows.length} of {projects?.total ?? rows.length} projects
+                    </span>
                     <div className="flex items-center gap-3">
                         <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${unreadBadgeClass(pageUnreadTotal)}`}>
                             Unread on this page: {Number(pageUnreadTotal)}
@@ -53,10 +52,10 @@ export default function Index({
                     </div>
                 </div>
 
-                <div className="mt-6">
-                    <DataTable
-                        rows={rows}
-                        emptyMessage="No projects available."
+                <DataTable
+                    framed={false}
+                    rows={rows}
+                    emptyMessage="No projects available."
                         columns={[
                             { key: 'id', header: 'ID', render: (project) => <div className="text-xs text-slate-500">#{project.id}</div> },
                             { key: 'project', header: 'Project', render: (project) => <div className="font-semibold text-slate-900">{project.name}</div> },
@@ -99,33 +98,12 @@ export default function Index({
                             );
                         }}
                     />
-                </div>
 
-                {links.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                        {links.map((link, idx) =>
-                            link.url ? (
-                                <a
-                                    key={`${idx}-${link.label}`}
-                                    href={link.url}
-                                    data-native="true"
-                                    className={`rounded-full border px-3 py-1 ${
-                                        link.active
-                                            ? 'border-slate-900 bg-slate-900 text-white'
-                                            : BTN.secondary
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ) : (
-                                <span
-                                    key={`${idx}-${link.label}`}
-                                    className="rounded-full border border-slate-200 px-3 py-1 text-slate-300"
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ),
-                        )}
-                    </div>
-                ) : null}
+                <Pagination
+                    pagination={projects}
+                    label="projects"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
             </div>
         </>
     );

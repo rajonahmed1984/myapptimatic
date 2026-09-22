@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 export default function Index({
@@ -173,31 +174,36 @@ export default function Index({
                     </div>
                 </div>
 
-                <div className="card p-4 md:p-5">
-                    <form
-                        method="GET"
-                        action={searchAction}
-                        className="flex flex-wrap items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            submitSearch();
-                        }}
-                    >
-                        <div className="relative w-full max-w-md">
-                            <input
-                                type="text"
-                                name="search"
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="Search by reference, invoice, gateway, customer..."
-                                className="ui-input"
-                            />
+                <div id="accountingTableWrap" className="card overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                        <div className="flex flex-1 flex-wrap items-center gap-3">
+                            <form
+                                method="GET"
+                                action={searchAction}
+                                className="min-w-0 flex-1 max-w-md"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    submitSearch();
+                                }}
+                            >
+                                <input
+                                    type="text"
+                                    name="search"
+                                    value={searchTerm}
+                                    onChange={(event) => setSearchTerm(event.target.value)}
+                                    placeholder="Search by reference, invoice, gateway, customer..."
+                                    className="ui-input w-full"
+                                />
+                            </form>
+                            <span className="text-xs font-semibold text-slate-500">
+                                Showing {pagination?.from ?? 1} – {pagination?.to ?? entries.length} of {pagination?.total ?? entries.length} entries
+                            </span>
                         </div>
-                    </form>
+                    </div>
 
-                    <div id="accountingTableWrap" className="mt-4">
-                        <DataTable
-                            rows={entries}
+                    <DataTable
+                        framed={false}
+                        rows={entries}
                             emptyMessage="No accounting entries found."
                             columns={[
                                 { key: 'date', header: 'Date', cellClassName: 'tabular-nums text-slate-600', render: (entry) => entry.entry_date_display },
@@ -312,47 +318,12 @@ export default function Index({
                                 </MobileCard>
                             )}
                         />
-                    </div>
 
-                    {pagination?.total > 0 ? (
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-                            <span className="text-slate-500">
-                                Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}
-                            </span>
-
-                            {pagination?.has_pages ? (
-                                <div className="flex items-center gap-2">
-                                    {pagination.previous_url ? (
-                                        <a
-                                            href={pagination.previous_url}
-                                            data-native="true"
-                                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                        >
-                                            Previous
-                                        </a>
-                                    ) : (
-                                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                                    )}
-
-                                    <span className="whitespace-nowrap text-slate-500">
-                                        Page {pagination.current_page || 1} of {pagination.last_page || 1}
-                                    </span>
-
-                                    {pagination.next_url ? (
-                                        <a
-                                            href={pagination.next_url}
-                                            data-native="true"
-                                            className="rounded-full border border-slate-300 px-3 py-1 text-slate-700 hover:border-teal-300 hover:text-teal-600"
-                                        >
-                                            Next
-                                        </a>
-                                    ) : (
-                                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                                    )}
-                                </div>
-                            ) : null}
-                        </div>
-                    ) : null}
+                    <Pagination
+                        pagination={pagination}
+                        label="entries"
+                        className="border-t border-slate-200 px-4 py-3"
+                    />
                 </div>
             </div>
         </>

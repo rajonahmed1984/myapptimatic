@@ -32,7 +32,15 @@ const buildPages = (current, last) => {
 export default function Pagination({ pagination = {}, label = 'results', className = '' }) {
     const current = Number(pagination.current_page || 1);
     const last = Number(pagination.last_page || 1);
+    const perPage = Number(pagination.per_page || 15);
     const total = Number(pagination.total || 0);
+
+    const from = pagination.from !== undefined && pagination.from !== null
+        ? pagination.from
+        : (total > 0 ? (current - 1) * perPage + 1 : 0);
+    const to = pagination.to !== undefined && pagination.to !== null
+        ? pagination.to
+        : (total > 0 ? Math.min(current * perPage, total) : 0);
 
     const go = (page) => {
         if (page < 1 || page > last || page === current) {
@@ -62,9 +70,9 @@ export default function Pagination({ pagination = {}, label = 'results', classNa
             <div className="text-xs text-slate-500">
                 {total > 0 ? (
                     <>
-                        Showing <span className="font-semibold text-slate-700">{pagination.from}</span>
+                        Showing <span className="font-semibold text-slate-700">{from}</span>
                         {' – '}
-                        <span className="font-semibold text-slate-700">{pagination.to}</span> of{' '}
+                        <span className="font-semibold text-slate-700">{to}</span> of{' '}
                         <span className="font-semibold text-slate-700">{total}</span> {label}
                     </>
                 ) : (

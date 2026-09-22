@@ -10,6 +10,7 @@ use App\Services\GeminiService;
 use App\Services\IncomeEntryService;
 use App\Services\WhmcsClient;
 use App\Support\Currency;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -278,35 +279,9 @@ class IncomeController extends Controller
         );
     }
 
-    public function create(): InertiaResponse
+    public function create(): RedirectResponse
     {
-        $categories = IncomeCategory::query()
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get();
-
-        return Inertia::render('Admin/Income/Create', [
-            'pageTitle' => 'Add Income',
-            'routes' => [
-                'index' => route('admin.income.index'),
-                'store' => route('admin.income.store'),
-            ],
-            'categories' => $categories->map(function (IncomeCategory $category) {
-                return [
-                    'id' => $category->id,
-                    'name' => (string) $category->name,
-                ];
-            })->values()->all(),
-            'form' => [
-                'fields' => [
-                    'income_category_id' => (string) old('income_category_id', ''),
-                    'title' => (string) old('title', ''),
-                    'amount' => (string) old('amount', ''),
-                    'income_date' => (string) old('income_date', now()->toDateString()),
-                    'notes' => (string) old('notes', ''),
-                ],
-            ],
-        ]);
+        return redirect()->route('admin.income.index', ['create' => 1]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -429,9 +404,26 @@ class IncomeController extends Controller
                 'index' => route('admin.income.index'),
                 'categories' => route('admin.income.categories.index'),
                 'create' => route('admin.income.create'),
+                'store' => route('admin.income.store'),
             ],
+            'categories' => IncomeCategory::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($category) => [
+                    'id' => $category->id,
+                    'name' => (string) $category->name,
+                ])
+                ->values()
+                ->all(),
+            'defaultIncomeDate' => now()->toDateString(),
             'incomes' => $incomeRows,
             'pagination_links' => $paginationLinks,
+            'pagination' => PaginationPayload::make(
+                $incomes,
+                route('admin.income.index'),
+                ['search' => $search]
+            ),
         ];
     }
 

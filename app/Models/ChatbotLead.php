@@ -12,5 +12,12 @@ class ChatbotLead extends Model
         'phone',
         'product_interest',
         'transcript',
+        'is_read',
+        'read_at',
+    ];
+
+    protected $casts = [
+        'is_read' => 'boolean',
+        'read_at' => 'datetime',
     ];
 }

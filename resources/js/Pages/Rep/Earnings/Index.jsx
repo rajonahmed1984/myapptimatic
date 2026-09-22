@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const statusClass = (label) => {
@@ -121,15 +122,11 @@ export default function Index({ earnings = [], assigned_projects = [], paginatio
                         )}
                     />
 
-                    {pagination?.last_page > 1 ? (
-                        <div className="mt-4 flex items-center justify-between text-xs">
-                            <span className="text-slate-500">Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}</span>
-                            <div className="flex items-center gap-2">
-                                {pagination.prev_page_url ? <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Previous</a> : null}
-                                {pagination.next_page_url ? <a href={pagination.next_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Next</a> : null}
-                            </div>
-                        </div>
-                    ) : null}
+                    <Pagination
+                        pagination={pagination}
+                        label="earnings"
+                        className="border-t border-slate-200 px-4 py-3"
+                    />
                 </div>
             </div>
         </>

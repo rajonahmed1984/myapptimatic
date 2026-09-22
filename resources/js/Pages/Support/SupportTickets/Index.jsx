@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
+import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
 const query = (base, status) => {
@@ -23,13 +24,6 @@ export default function Index({ tickets = [], status = '', status_counts = {}, p
     return (
         <>
             <Head title="Support Tickets" />
-
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Support Tickets</h1>
-                    <p className="mt-1 text-sm text-slate-500">Track and reply to client support requests.</p>
-                </div>
-            </div>
 
             <div className="card p-4">
                 <div className="flex flex-wrap gap-2 text-xs">
@@ -117,15 +111,11 @@ export default function Index({ tickets = [], status = '', status_counts = {}, p
                 />
             </div>
 
-            {pagination?.last_page > 1 ? (
-                <div className="mt-4 flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Showing {pagination.from || 0}-{pagination.to || 0} of {pagination.total || 0}</span>
-                    <div className="flex items-center gap-2">
-                        {pagination.prev_page_url ? <a href={pagination.prev_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Previous</a> : null}
-                        {pagination.next_page_url ? <a href={pagination.next_page_url} data-native="true" className="rounded-full border border-slate-200 px-3 py-1 text-slate-600">Next</a> : null}
-                    </div>
-                </div>
-            ) : null}
+            <Pagination
+                pagination={pagination}
+                label="tickets"
+                className="mt-4 border-t border-slate-200 pt-4"
+            />
         </>
     );
 }

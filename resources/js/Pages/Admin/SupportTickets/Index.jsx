@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DateTimeText from '../../../Components/DateTimeText';
+import Pagination from '../../../Components/Table/Pagination';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
@@ -51,8 +52,8 @@ export default function Index({
         <>
             <Head title={pageTitle} />
 
-            <div className="card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div className="card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-xs">
                     <div className="flex flex-wrap gap-2">
                         {filter_links.map((filter) => (
                             <a
@@ -69,7 +70,7 @@ export default function Index({
                             </a>
                         ))}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <form
                             method="GET"
                             action={routes?.current || routes?.index}
@@ -85,9 +86,12 @@ export default function Index({
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Search tickets..."
-                                className="w-full max-w-sm h-8 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                                className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
                             />
                         </form>
+                        <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">
+                            Showing {pagination?.from ?? (tickets.length > 0 ? 1 : 0)} – {pagination?.to ?? tickets.length} of {pagination?.total ?? tickets.length} tickets
+                        </span>
                         <a
                             href={routes?.create}
                             data-native="true"
@@ -97,10 +101,9 @@ export default function Index({
                         </a>
                     </div>
                 </div>
-            </div>
 
-            <div className="mt-6">
                 <DataTable
+                    framed={false}
                     rows={tickets}
                     emptyMessage="No support tickets yet."
                     columns={[
@@ -206,34 +209,13 @@ export default function Index({
                         </MobileCard>
                     )}
                 />
-            </div>
 
-            {pagination?.has_pages ? (
-                <div className="mt-4 flex items-center justify-end gap-2 text-sm">
-                    {pagination?.previous_url ? (
-                        <a
-                            href={pagination.previous_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Previous
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Previous</span>
-                    )}
-                    {pagination?.next_url ? (
-                        <a
-                            href={pagination.next_url}
-                            data-native="true"
-                            className={BTN.secondary}
-                        >
-                            Next
-                        </a>
-                    ) : (
-                        <span className="rounded-full border border-slate-200 px-3 py-1 text-slate-300">Next</span>
-                    )}
-                </div>
-            ) : null}
+                <Pagination
+                    pagination={pagination}
+                    label="tickets"
+                    className="border-t border-slate-200 px-4 py-3"
+                />
+            </div>
         </>
     );
 }

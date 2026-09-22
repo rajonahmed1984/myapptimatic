@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaveType;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -33,11 +34,7 @@ class LeaveTypeController extends Controller
                     'destroy' => route('admin.hr.leave-types.destroy', $type),
                 ],
             ])->values(),
-            'pagination' => [
-                'previous_url' => $types->previousPageUrl(),
-                'next_url' => $types->nextPageUrl(),
-                'has_pages' => $types->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($types),
             'editingType' => $editingType ? [
                 'id' => $editingType->id,
                 'name' => $editingType->name,

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CancellationRequest;
+use App\Models\ChatbotLead;
 use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\LeaveRequest;
@@ -83,6 +84,7 @@ class HeaderStatsService
                     ->where('last_check_at', '>=', now()->subHours(48))
                     ->whereColumn('last_verified_at', '>=', 'last_check_at')
                     ->count(),
+                'unread_chatbot_leads' => ChatbotLead::where('is_read', false)->count(),
             ];
         });
     }
@@ -263,6 +265,7 @@ class HeaderStatsService
                 'apptimatic_email_unread' => 0,
                 'active_licenses' => 0,
                 'verified_active_synced_licenses' => 0,
+                'unread_chatbot_leads' => 0,
             ],
             'employee' => ['task_badge' => 0, 'unread_chat' => 0],
             'client' => [

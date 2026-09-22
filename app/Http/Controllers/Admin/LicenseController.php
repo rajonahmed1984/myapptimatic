@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\AccessBlockService;
 use App\Services\LicenseRealtimeCheckService;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -546,11 +547,11 @@ class LicenseController extends Controller
                     ],
                 ];
             })->all(),
-            'pagination' => [
-                'has_pages' => $licenses->hasPages(),
-                'previous_url' => $licenses->previousPageUrl(),
-                'next_url' => $licenses->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make(
+                $licenses,
+                route('admin.licenses.index'),
+                ['search' => $search]
+            ),
         ];
     }
 

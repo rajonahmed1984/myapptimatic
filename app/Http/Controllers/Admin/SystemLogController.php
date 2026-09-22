@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\ResendSystemLogEmailJob;
 use App\Models\SystemLog;
+use App\Support\PaginationPayload;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -150,13 +151,7 @@ class SystemLogController extends Controller
                     'context_json' => ! empty($log->context) ? json_encode($log->context) : null,
                 ];
             })->values()->all(),
-            'pagination' => [
-                'count' => $logs->count(),
-                'total' => $logs->total(),
-                'has_pages' => $logs->hasPages(),
-                'previous_url' => $logs->previousPageUrl(),
-                'next_url' => $logs->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($logs),
         ];
     }
 }

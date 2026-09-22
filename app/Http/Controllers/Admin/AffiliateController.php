@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Affiliate;
 use App\Models\Customer;
+use App\Support\PaginationPayload;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -66,13 +67,7 @@ class AffiliateController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'has_pages' => $affiliates->hasPages(),
-                'current_page' => $affiliates->currentPage(),
-                'last_page' => $affiliates->lastPage(),
-                'previous_url' => $affiliates->previousPageUrl(),
-                'next_url' => $affiliates->nextPageUrl(),
-            ],
+            'pagination' => PaginationPayload::make($affiliates),
         ]);
     }
 

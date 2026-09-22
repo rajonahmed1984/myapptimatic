@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Services\CommissionService;
 use App\Support\AjaxResponse;
 use App\Support\Currency;
+use App\Support\PaginationPayload;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -607,17 +608,7 @@ class AccountingController extends Controller
                     ],
                 ];
             })->values()->all(),
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-                'previous_url' => $paginator->previousPageUrl(),
-                'next_url' => $paginator->nextPageUrl(),
-                'has_pages' => $paginator->hasPages(),
-            ],
+            'pagination' => PaginationPayload::make($paginator),
         ];
     }
 
