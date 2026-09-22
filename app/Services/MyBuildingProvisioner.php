@@ -44,6 +44,17 @@ class MyBuildingProvisioner
             return false;
         }
 
+        // The owner details were copied onto the row when the subscription was
+        // saved, so a profile fixed up afterwards would otherwise never reach
+        // the installation. Re-read the customer and keep the row in step.
+        $this->refreshOwnerDetails($provision);
+
+        if (trim((string) $provision->owner_phone) === '') {
+            $this->fail($provision, 'The owner phone number is missing. Add a phone number to the customer profile, then provision again.');
+
+            return false;
+        }
+
         $payload = [
             'account_name' => $provision->customer?->company_name
                 ?: ($provision->customer?->name ?: $provision->building_name),
@@ -72,7 +83,9 @@ class MyBuildingProvisioner
             'external_order_id' => $provision->order_id ? (string) $provision->order_id : null,
         ];
 
-        $body = json_encode(array_filter($payload, fn ($v) => $v !== null), JSON_UNESCAPED_SLASHES);
+        // An empty string is not a value the installation can validate against,
+        // so it is dropped alongside nulls.
+        $body = json_encode(array_filter($payload, fn ($v) => $v !== null && $v !== ''), JSON_UNESCAPED_SLASHES);
         $timestamp = (string) time();
         $signature = hash_hmac('sha256', $timestamp.'.'.$body, $this->secret());
 
@@ -194,6 +207,52 @@ class MyBuildingProvisioner
         $subscription->forceFill([
             'subscription_amount' => round(max(0, $contractedFlats) * (float) $plan->price, 2),
         ])->save();
+    }
+
+    /**
+     * Top the row's owner fields up from the customer profile. Placeholders
+     * written when the profile was still blank are treated as missing, so an
+     * admin can fix the customer and retry without editing the provision.
+     */
+    private function refreshOwnerDetails(MyBuildingProvision $provision): void
+    {
+        $provision->loadMissing('customer');
+        $customer = $provision->customer;
+
+        if (! $customer) {
+            return;
+        }
+
+        $resolved = [
+            'owner_name' => $this->firstFilled($provision->owner_name, $customer->name, 'Owner'),
+            'owner_email' => $this->firstFilled(
+                $provision->owner_email === 'owner@example.com' ? null : $provision->owner_email,
+                $customer->email,
+                $provision->owner_email
+            ),
+            'owner_phone' => $this->firstFilled($provision->owner_phone, $customer->phone),
+        ];
+
+        $changed = array_filter(
+            $resolved,
+            fn ($value, $field) => (string) $value !== (string) $provision->{$field},
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        if ($changed !== []) {
+            $provision->forceFill($changed)->save();
+        }
+    }
+
+    private function firstFilled(?string ...$values): string
+    {
+        foreach ($values as $value) {
+            if (trim((string) $value) !== '') {
+                return trim((string) $value);
+            }
+        }
+
+        return '';
     }
 
     private function fail(MyBuildingProvision $provision, string $message): void

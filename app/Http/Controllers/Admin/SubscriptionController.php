@@ -142,10 +142,7 @@ class SubscriptionController extends Controller
                     'city_name' => null,
                     'area_name' => null,
                     'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
-                    'owner_name' => $customer?->name ?: 'Owner',
-                    'owner_email' => $customer?->email ?: 'owner@example.com',
-                    'owner_phone' => $customer?->phone ?: '',
-                ]);
+                ] + $this->ownerDetails($customer, forCreate: true));
             }
 
             return $subscription;
@@ -493,8 +490,9 @@ class SubscriptionController extends Controller
                 $flatsPerFloor = (int) ceil($contractedFlats / max(1, $totalFloors));
 
                 if ($license) {
-                    MyBuildingProvision::updateOrCreate(
-                        ['license_id' => $license->id],
+                    $provisionRow = MyBuildingProvision::firstOrNew(['license_id' => $license->id]);
+
+                    $provisionRow->fill(
                         [
                             'customer_id' => $customer?->id,
                             'building_name' => $request->input('building_name') ?: ($customer?->company_name ?: $customer?->name),
@@ -511,11 +509,8 @@ class SubscriptionController extends Controller
                             'city_name' => null,
                             'area_name' => null,
                             'install_url' => (string) ($request->input('install_url') ?: config('mybuilding.default_install_url') ?: ''),
-                            'owner_name' => $customer?->name ?: 'Owner',
-                            'owner_email' => $customer?->email ?: 'owner@example.com',
-                            'owner_phone' => $customer?->phone ?: '',
-                        ]
-                    );
+                        ] + $this->ownerDetails($customer, forCreate: ! $provisionRow->exists)
+                    )->save();
                 }
             }
 
@@ -675,6 +670,29 @@ class SubscriptionController extends Controller
      * building belonging to one of their other licences, which made an edit
      * saved here look as though it had never been saved at all.
      */
+    /**
+     * Owner contact details for the building, taken from the customer profile.
+     *
+     * A blank field is left out entirely so re-saving a subscription cannot
+     * wipe a phone or email the building already has; the provisioner tops the
+     * row up from the profile again on every attempt.
+     *
+     * @return array<string, string>
+     */
+    private function ownerDetails(?Customer $customer, bool $forCreate = false): array
+    {
+        $details = array_filter([
+            'owner_name' => trim((string) $customer?->name),
+            'owner_email' => trim((string) $customer?->email),
+            'owner_phone' => trim((string) $customer?->phone),
+        ], fn ($value) => $value !== '');
+
+        // The columns are not nullable, so a new row still needs every key.
+        return $forCreate
+            ? $details + ['owner_name' => 'Owner', 'owner_email' => '', 'owner_phone' => '']
+            : $details;
+    }
+
     private function provisionFor(Subscription $subscription): ?MyBuildingProvision
     {
         $licenseIds = $subscription->licenses->pluck('id');
