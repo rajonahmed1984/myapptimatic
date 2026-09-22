@@ -167,7 +167,7 @@ class OrderController extends Controller
         // MyBuilding orders create the building inside the customer's
         // installation. A failure here must never undo an accepted order, so
         // it is reported and left retryable from the MyBuilding page.
-        $provisionWarning = $this->provisionMyBuilding($order, $license, $data['license_url']);
+        $provisionWarning = $this->provisionMyBuilding($order, $license);
 
         $clientNotifications->sendOrderAccepted($order);
         $adminNotifications->sendOrderAccepted($order);
@@ -193,7 +193,7 @@ class OrderController extends Controller
      *
      * @return string|null a warning to surface, or null when nothing to do
      */
-    private function provisionMyBuilding(Order $order, License $license, string $licenseUrl): ?string
+    private function provisionMyBuilding(Order $order, License $license): ?string
     {
         $plan = $order->plan ?? $order->subscription?->plan ?? $license->subscription?->plan;
         $slug = $license->product?->slug
@@ -234,7 +234,7 @@ class OrderController extends Controller
                 'total_floors' => $totalFloors,
                 'flats_per_floor' => $flatsPerFloor,
                 'contracted_flats' => $contractedFlats,
-                'install_url' => $this->installUrlFrom($licenseUrl) ?: (string) (config('mybuilding.default_install_url') ?: ''),
+                'install_url' => (string) (config('mybuilding.default_install_url') ?: ''),
                 'owner_name' => $customer?->name ?: 'Owner',
                 'owner_email' => $customer?->email ?: 'owner@example.com',
                 'owner_phone' => $customer?->phone ?: '',
@@ -242,11 +242,9 @@ class OrderController extends Controller
             ]);
         }
 
-        // The approved domain is where the building has to be created.
-        $installUrl = $provision->install_url ?: $this->installUrlFrom($licenseUrl);
-        if (empty($installUrl) || $installUrl === 'http://' || $installUrl === 'https://') {
-            $installUrl = $this->installUrlFrom($licenseUrl) ?: (string) (config('mybuilding.default_install_url') ?: '');
-        }
+        // Every building lives on the one hosted installation, so the licence
+        // domain (the customer's own site) must not be used as the target.
+        $installUrl = (string) (config('mybuilding.default_install_url') ?: '');
 
         $provision->forceFill([
             'license_id' => $license->id,
@@ -278,25 +276,6 @@ class OrderController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * The licensed domain is stored bare; the installation needs a full URL.
-     */
-    private function installUrlFrom(string $licenseUrl): string
-    {
-        $trimmed = trim($licenseUrl);
-
-        if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
-            return rtrim($trimmed, '/');
-        }
-
-        $host = $this->normalizeDomain($trimmed) ?: $trimmed;
-        $scheme = in_array($host, ['localhost', '127.0.0.1'], true) || str_starts_with($host, '127.0.0.1')
-            ? 'http'
-            : 'https';
-
-        return $scheme.'://'.$host;
     }
 
     public function cancel(Order $order, AdminNotificationService $adminNotifications): RedirectResponse

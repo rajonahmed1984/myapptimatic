@@ -134,6 +134,7 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 { label: 'Orders', href: '/admin/orders', badge: adminStats?.pending_orders },
                 { label: 'Subscriptions', href: '/admin/subscriptions' },
                 { label: 'Licenses', href: '/admin/licenses' },
+                { label: 'Cancellations', href: '/admin/cancellation-requests', badge: adminStats?.pending_cancellations },
                 { label: 'Manual Payments', href: '/admin/payment-proofs', badge: adminStats?.pending_manual_payments },
                 { label: 'Payment Gateways', href: '/admin/payment-gateways' },
             ],
@@ -228,7 +229,11 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 <NavLink href="/admin/customers" active={isActiveRoute(currentUrl, '/admin/customers*')}>
                     Customers
                 </NavLink>
-                <NavLink href="/admin/orders" active={isActiveRoute(currentUrl, '/admin/orders*')}>
+                <NavLink
+                    href="/admin/orders"
+                    active={isActiveRoute(currentUrl, '/admin/orders*')}
+                    badge={adminStats?.pending_orders}
+                >
                     Orders
                 </NavLink>
                 <NavLink href="/admin/sales-reps" active={isActiveRoute(currentUrl, '/admin/sales-reps*')}>
@@ -277,9 +282,17 @@ export default function AdminLayout({ children, title, pageHeading }) {
                     Subscriptions
                 </NavLink>
                 <NavLink
+                    href="/admin/cancellation-requests"
+                    active={isActiveRoute(currentUrl, '/admin/cancellation-requests*')}
+                    badge={adminStats?.pending_cancellations}
+                    badgeColor="bg-rose-100 text-rose-700"
+                >
+                    Cancellations
+                </NavLink>
+                <NavLink
                     href="/admin/licenses"
                     active={isActiveRoute(currentUrl, '/admin/licenses*')}
-                    badge={adminStats?.verified_active_synced_licenses}
+                    badge={adminStats?.active_licenses}
                     badgeColor="bg-teal-100 text-teal-800"
                 >
                     Licenses

@@ -413,6 +413,9 @@ Route::middleware([
             ->middleware('project.financial')
             ->middleware(HandleInertiaRequests::class)
             ->name('services.show');
+        Route::post('/services/{subscription}/cancel-request', [ClientServiceController::class, 'requestCancellation'])
+            ->middleware('project.financial')
+            ->name('services.cancel-request');
         Route::get('/invoices', [ClientInvoiceController::class, 'index'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.index');
         Route::get('/invoices/paid', [ClientInvoiceController::class, 'paid'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.paid');
         Route::get('/invoices/unpaid', [ClientInvoiceController::class, 'unpaid'])->middleware('project.financial')->middleware(HandleInertiaRequests::class)->name('invoices.unpaid');

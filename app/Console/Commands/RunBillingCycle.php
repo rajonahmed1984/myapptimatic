@@ -15,6 +15,7 @@ use App\Jobs\SendTicketFeedbackNotification;
 use App\Services\BillingService;
 use App\Services\MaintenanceBillingService;
 use App\Services\StatusUpdateService;
+use App\Services\SubscriptionCancellationService;
 use App\Models\SupportTicket;
 use App\Support\SystemLogger;
 use Carbon\Carbon;
@@ -167,7 +168,12 @@ class RunBillingCycle extends Command
                         $subscription->update([
                             'status' => 'cancelled',
                             'auto_renew' => false,
+                            'cancelled_at' => $subscription->cancelled_at ?? now(),
                         ]);
+                        // The licences have to follow, or the subscription
+                        // reads as cancelled while its licences still count as
+                        // active everywhere they are listed.
+                        app(SubscriptionCancellationService::class)->revokeLicenses($subscription);
                         $fixedTermTerminations++;
                         continue;
                     }

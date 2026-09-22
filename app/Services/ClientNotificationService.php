@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\MailCategory;
+use App\Models\CancellationRequest;
 use App\Models\Customer;
 use App\Models\EmailTemplate;
 use App\Models\Invoice;
@@ -510,6 +511,73 @@ class ClientNotificationService
     public function sendTicketOpened(SupportTicket $ticket): void
     {
         $this->sendTicketTemplate($ticket, 'support_ticket_opened', 'Support ticket opened - {{company_name}}');
+    }
+
+    /**
+     * Confirm an accepted cancellation, spelling out when the service stops
+     * and that any open invoices are still payable.
+     */
+    public function sendCancellationAccepted(CancellationRequest $cancellationRequest): void
+    {
+        $this->sendCancellationDecision(
+            $cancellationRequest,
+            'cancellation_accepted',
+            'Your cancellation request has been approved - {{company_name}}',
+            "Your request to cancel {{service_name}} has been approved.\n{{cancellation_effect}}\nOutstanding invoices remain payable.\n{{admin_note}}"
+        );
+    }
+
+    public function sendCancellationRejected(CancellationRequest $cancellationRequest): void
+    {
+        $this->sendCancellationDecision(
+            $cancellationRequest,
+            'cancellation_rejected',
+            'Your cancellation request was declined - {{company_name}}',
+            "Your request to cancel {{service_name}} was declined.\n{{admin_note}}\nThe service continues as normal."
+        );
+    }
+
+    private function sendCancellationDecision(
+        CancellationRequest $cancellationRequest,
+        string $templateKey,
+        string $fallbackSubject,
+        string $fallbackBody
+    ): void {
+        $cancellationRequest->loadMissing(['customer', 'subscription.plan.product']);
+        $customer = $cancellationRequest->customer;
+
+        if (! $customer || ! $customer->email) {
+            return;
+        }
+
+        $template = EmailTemplate::query()->where('key', $templateKey)->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subscription = $cancellationRequest->subscription;
+        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
+        $periodEnd = $subscription?->current_period_end?->format($dateFormat) ?? '--';
+
+        $effect = $cancellationRequest->isImmediate()
+            ? 'The service has been cancelled and is no longer active.'
+            : "The service stays active until {$periodEnd} and will not be invoiced again.";
+
+        $replacements = [
+            '{{client_name}}' => $customer->name ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{service_name}}' => $subscription?->plan?->product
+                ? $subscription->plan->product->name.' - '.$subscription->plan->name
+                : ($subscription?->plan?->name ?? '--'),
+            '{{cancellation_type}}' => $cancellationRequest->typeLabel(),
+            '{{cancellation_effect}}' => $effect,
+            '{{period_end}}' => $periodEnd,
+            '{{admin_note}}' => (string) $cancellationRequest->admin_note,
+        ];
+
+        $subject = $this->applyReplacements($template?->subject ?: $fallbackSubject, $replacements);
+        $bodyHtml = $this->formatEmailBody($template?->body ?: $fallbackBody, $replacements);
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
     }
 
     public function sendLicenseExpiryNotice(License $license, string $templateKey): void

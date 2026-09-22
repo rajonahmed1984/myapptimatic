@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\MailCategory;
 use App\Enums\Role;
+use App\Models\CancellationRequest;
 use App\Models\EmailTemplate;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -139,6 +140,50 @@ class AdminNotificationService
             '{{order_number}}' => $orderNumber,
             '{{order_total}}' => $orderTotal,
             '{{order_url}}' => route('admin.orders.show', $order),
+        ];
+
+        $subject = $this->applyReplacements($subject, $replacements);
+        $bodyHtml = $this->formatEmailBody($body, $replacements);
+
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
+    }
+
+    /**
+     * Tell the admins a customer has asked to end a service, including what
+     * the service still owes so the balance is not a surprise on review.
+     */
+    public function sendCancellationRequested(CancellationRequest $cancellationRequest): void
+    {
+        $recipients = $this->adminRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $cancellationRequest->loadMissing(['customer', 'subscription.plan.product']);
+
+        $template = EmailTemplate::query()
+            ->where('key', 'cancellation_requested_notification')
+            ->first();
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subscription = $cancellationRequest->subscription;
+        $serviceName = $subscription?->plan?->product
+            ? $subscription->plan->product->name.' - '.$subscription->plan->name
+            : ($subscription?->plan?->name ?? '--');
+
+        $subject = $template?->subject ?: "Cancellation requested - {$companyName}";
+        $body = $template?->body ?: "{{client_name}} ({{client_email}}) has requested cancellation of {{service_name}}.\nType: {{cancellation_type}}\nReason: {{cancellation_reason}}\nOutstanding balance: {{outstanding_amount}}\nReview: {{request_url}}";
+        $fromEmail = $this->resolveFromEmail($template);
+
+        $replacements = [
+            '{{client_name}}' => $cancellationRequest->customer?->name ?? '--',
+            '{{client_email}}' => $cancellationRequest->customer?->email ?? '--',
+            '{{company_name}}' => $companyName,
+            '{{service_name}}' => $serviceName,
+            '{{cancellation_type}}' => $cancellationRequest->typeLabel(),
+            '{{cancellation_reason}}' => (string) $cancellationRequest->reason,
+            '{{outstanding_amount}}' => number_format((float) $cancellationRequest->due_at_request, 2),
+            '{{request_url}}' => route('admin.cancellation-requests.index'),
         ];
 
         $subject = $this->applyReplacements($subject, $replacements);

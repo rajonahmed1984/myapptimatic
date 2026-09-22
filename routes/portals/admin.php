@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\InvoiceController as AdminInvoiceController;
 use App\Http\Controllers\Admin\UserActivitySummaryController;
 use App\Http\Controllers\Admin\PaymentProofController as AdminPaymentProofController;
+use App\Http\Controllers\Admin\CancellationRequestController;
 use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PlanController;
@@ -722,6 +723,11 @@ Route::middleware([
     Route::post('invoices/{invoice}/recalculate', [AdminInvoiceController::class, 'recalculate'])->name('invoices.recalculate');
     Route::put('invoices/{invoice}', [AdminInvoiceController::class, 'update'])->name('invoices.update');
     Route::delete('invoices/{invoice}', [AdminInvoiceController::class, 'destroy'])->name('invoices.destroy');
+    Route::post('cancellation-requests/{cancellationRequest}/accept', [CancellationRequestController::class, 'accept'])->name('cancellation-requests.accept');
+    Route::post('cancellation-requests/{cancellationRequest}/reject', [CancellationRequestController::class, 'reject'])->name('cancellation-requests.reject');
+    Route::get('cancellation-requests', [CancellationRequestController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('cancellation-requests.index');
     Route::post('payment-proofs/{paymentProof}/approve', [AdminPaymentProofController::class, 'approve'])->name('payment-proofs.approve');
     Route::post('payment-proofs/{paymentProof}/reject', [AdminPaymentProofController::class, 'reject'])->name('payment-proofs.reject');
     Route::get('payment-proofs/{paymentProof}/receipt', [AdminPaymentProofController::class, 'receipt'])->name('payment-proofs.receipt');

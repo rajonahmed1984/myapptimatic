@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CancellationRequest;
 use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\LeaveRequest;
@@ -65,10 +66,16 @@ class HeaderStatsService
                 'tickets_waiting' => SupportTicket::where('status', 'customer_reply')->count(),
                 'open_support_tickets' => SupportTicket::where('status', 'open')->count(),
                 'pending_manual_payments' => PaymentProof::where('status', 'pending')->count(),
+                'pending_cancellations' => CancellationRequest::where('status', 'pending')->count(),
                 'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
                 'tasks_badge' => $taskBadge,
                 'unread_chat' => $unreadChat,
                 'apptimatic_email_unread' => $this->apptimaticEmailUnread($request),
+                // What the Licenses badge counts: simply how many licences are
+                // active, so it matches the number the list page shows.
+                'active_licenses' => License::where('status', 'active')->count(),
+                // Kept for the licence health panel: active, checked in the
+                // last 48h, and verified no earlier than that check.
                 'verified_active_synced_licenses' => License::query()
                     ->where('status', 'active')
                     ->whereNotNull('last_check_at')
@@ -249,10 +256,12 @@ class HeaderStatsService
                 'tickets_waiting' => 0,
                 'open_support_tickets' => 0,
                 'pending_manual_payments' => 0,
+                'pending_cancellations' => 0,
                 'pending_leave_requests' => 0,
                 'tasks_badge' => 0,
                 'unread_chat' => 0,
                 'apptimatic_email_unread' => 0,
+                'active_licenses' => 0,
                 'verified_active_synced_licenses' => 0,
             ],
             'employee' => ['task_badge' => 0, 'unread_chat' => 0],
