@@ -20,7 +20,8 @@ class LoginService
     public const LOGIN_MAX_ATTEMPTS = 5;
 
     public function __construct(
-        private readonly RecaptchaService $recaptcha
+        private readonly RecaptchaService $recaptcha,
+        private readonly LoginOtpService $otpService
     ) {
     }
 
@@ -85,6 +86,28 @@ class LoginService
                 'ok' => false,
                 'error' => $validationError,
                 'email' => $credentials['email'],
+            ];
+        }
+
+        if ($user->requiresLoginOtp($portal)) {
+            $authGuard->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            Portal::setPortal($request, $portal);
+
+            $this->otpService->generateAndSend($user, $portal);
+
+            $request->session()->put('login.pending_otp', [
+                'user_id' => $user->id,
+                'portal' => $portal,
+                'remember' => $remember,
+                'redirect' => $this->safeRedirectTarget($request),
+            ]);
+
+            return [
+                'ok' => true,
+                'requires_otp' => true,
+                'redirect' => route('login.otp.show', ['portal' => $portal], false),
             ];
         }
 

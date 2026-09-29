@@ -22,10 +22,12 @@ class ProfileController extends Controller
                 'name' => (string) $user->name,
                 'email' => (string) $user->email,
                 'avatar_path' => $user->avatar_path,
+                'otp_enabled' => (bool) $user->otp_enabled,
             ],
             'form' => [
                 'name' => old('name', $user->name),
                 'email' => old('email', $user->email),
+                'otp_enabled' => (bool) old('otp_enabled', $user->otp_enabled),
             ],
             'routes' => [
                 'update' => route('client.profile.update'),
@@ -44,11 +46,13 @@ class ProfileController extends Controller
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', PasswordRule::defaults()],
             'avatar' => ['nullable', 'image', 'max:2048'],
+            'otp_enabled' => ['nullable', 'boolean'],
         ]);
 
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
+            'otp_enabled' => (bool) $request->boolean('otp_enabled'),
         ]);
 
         if ($customer) {

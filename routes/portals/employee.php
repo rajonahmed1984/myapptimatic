@@ -14,8 +14,6 @@ use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionCo
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
-use App\Http\Controllers\Mail\MailInboxController;
-use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
@@ -72,51 +70,6 @@ Route::middleware([
         Route::get('/tasks', [EmployeeTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [EmployeeChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/employee/chats');
-        Route::redirect('/mail', '/employee/apptimatic-email');
-        Route::prefix('apptimatic-email')
-            ->name('apptimatic-email.')
-            ->group(function () {
-                Route::get('/login', [MailLoginController::class, 'showLogin'])
-                    ->middleware(HandleInertiaRequests::class)
-                    ->name('login');
-                Route::post('/login', [MailLoginController::class, 'login'])
-                    ->middleware('throttle:mail-login')
-                    ->name('login.store');
-                Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
-
-                Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
-                    Route::get('/', fn () => redirect()->route('employee.apptimatic-email.inbox'));
-                    Route::get('/inbox', [MailInboxController::class, 'index'])
-                        ->middleware(HandleInertiaRequests::class)
-                        ->name('inbox');
-                    Route::get('/stream', [MailInboxController::class, 'stream'])
-                        ->name('stream');
-                    Route::post('/inbox/reply', [MailInboxController::class, 'reply'])
-                        ->name('reply');
-                    Route::post('/compose', [MailInboxController::class, 'compose'])
-                        ->name('compose');
-                    Route::post('/inbox/messages/{message}/move-trash', [MailInboxController::class, 'moveToTrash'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('move-trash');
-                    Route::post('/inbox/messages/{message}/restore', [MailInboxController::class, 'restoreFromTrash'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('restore');
-                    Route::post('/inbox/messages/{message}/delete', [MailInboxController::class, 'deleteForever'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('delete');
-                    Route::post('/inbox/messages/{message}/mark-unread', [MailInboxController::class, 'markUnread'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('mark-unread');
-                    Route::get('/inbox/attachment/{message}/{part}', [MailInboxController::class, 'attachment'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->where('part', '[0-9]+(?:\.[0-9]+)*')
-                        ->name('attachment');
-                    Route::get('/inbox/view={message}', [MailInboxController::class, 'show'])
-                        ->middleware(HandleInertiaRequests::class)
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('show');
-                });
-            });
         Route::post('/work-sessions/start', [EmployeeWorkSessionController::class, 'start'])->name('work-sessions.start');
         Route::post('/work-sessions/ping', [EmployeeWorkSessionController::class, 'ping'])->name('work-sessions.ping');
         Route::post('/work-sessions/stop', [EmployeeWorkSessionController::class, 'stop'])->name('work-sessions.stop');

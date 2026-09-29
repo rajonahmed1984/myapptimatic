@@ -26,6 +26,7 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar_path' => $user->avatar_path,
+                'otp_enabled' => (bool) $user->otp_enabled,
             ] : null,
             'sales_rep' => $salesRep ? [
                 'id' => $salesRep->id,
@@ -36,6 +37,7 @@ class ProfileController extends Controller
             'form' => [
                 'method' => 'PUT',
                 'action' => route('rep.profile.update'),
+                'otp_enabled' => (bool) ($user?->otp_enabled ?? false),
             ],
         ]);
     }
@@ -53,12 +55,14 @@ class ProfileController extends Controller
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', PasswordRule::defaults()],
             'avatar' => ['nullable', 'image', 'max:2048'],
+            'otp_enabled' => ['nullable', 'boolean'],
         ]);
 
         if ($user) {
             $user->update([
                 'name' => $data['name'],
                 'email' => $data['email'],
+                'otp_enabled' => (bool) $request->boolean('otp_enabled'),
             ]);
 
             if (! empty($data['password'])) {

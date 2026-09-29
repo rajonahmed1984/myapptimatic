@@ -17,7 +17,6 @@ use App\Models\ProjectTask;
 use App\Observers\ProjectTaskObserver;
 use App\Observers\InvoiceObserver;
 use App\Services\AuthFresh\LoginService;
-use App\Services\ApptimaticEmailStubRepository;
 use App\Support\Branding;
 use App\Support\DateTimeFormat;
 use App\Support\MailCategoryContext;
@@ -26,9 +25,7 @@ use App\Support\UrlResolver;
 use App\Services\HeaderStatsService;
 use App\Services\SettingsService;
 use App\Services\TaskQueryService;
-use App\Services\Mail\ImapInboxService;
 use App\Services\Mail\MailFromResolver;
-use App\Services\Mail\MailSessionService;
 use App\Services\Mail\MailSender;
 use DateTimeZone;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -211,27 +208,6 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('payment-callbacks', function ($request) {
             return Limit::perMinute(10)->by($request->ip() ?? 'unknown');
-        });
-
-        RateLimiter::for('mail-login', function ($request) {
-            $identity = (string) ($request->user()?->id ?? 'guest');
-            $email = strtolower((string) $request->input('email', 'none'));
-            $ip = (string) ($request->ip() ?? 'unknown');
-            $maxAttempts = max((int) config('apptimatic_email.login_rate_limit_attempts', 5), 1);
-            $decayMinutes = max((int) config('apptimatic_email.login_rate_limit_decay_minutes', 10), 1);
-
-            return Limit::perMinutes($decayMinutes, $maxAttempts)
-                ->by($identity.'|'.$email.'|'.$ip)
-                ->response(function (Request $request, array $headers) use ($decayMinutes) {
-                    $retryAfter = (int) ($headers['Retry-After'] ?? ($decayMinutes * 60));
-                    $retryAfter = max($retryAfter, 1);
-
-                    return back()
-                        ->withErrors([
-                            'email' => "Too many email login attempts. Please try again in {$retryAfter} seconds.",
-                        ])
-                        ->withInput($request->only('email'));
-                });
         });
     }
 

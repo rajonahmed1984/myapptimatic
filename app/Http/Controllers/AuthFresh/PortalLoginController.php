@@ -46,6 +46,10 @@ class PortalLoginController extends Controller
                 ->withInput($request->only('email'));
         }
 
+        if ($result['requires_otp'] ?? false) {
+            return redirect((string) $result['redirect']);
+        }
+
         return redirect()->intended((string) ($result['redirect'] ?? Portal::portalLoginUrl($portal)));
     }
 

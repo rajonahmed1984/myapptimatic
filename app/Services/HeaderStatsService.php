@@ -15,8 +15,6 @@ use App\Models\SalesRepresentative;
 use App\Models\SupportTicket;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Services\Mail\ImapInboxService;
-use App\Services\Mail\MailSessionService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -71,7 +69,6 @@ class HeaderStatsService
                 'pending_leave_requests' => LeaveRequest::where('status', 'pending')->count(),
                 'tasks_badge' => $taskBadge,
                 'unread_chat' => $unreadChat,
-                'apptimatic_email_unread' => $this->apptimaticEmailUnread($request),
                 // What the Licenses badge counts: simply how many licences are
                 // active, so it matches the number the list page shows.
                 'active_licenses' => License::where('status', 'active')->count(),
@@ -262,7 +259,6 @@ class HeaderStatsService
                 'pending_leave_requests' => 0,
                 'tasks_badge' => 0,
                 'unread_chat' => 0,
-                'apptimatic_email_unread' => 0,
                 'active_licenses' => 0,
                 'verified_active_synced_licenses' => 0,
                 'unread_chatbot_leads' => 0,
@@ -276,49 +272,6 @@ class HeaderStatsService
             ],
             'rep' => ['task_badge' => 0, 'unread_chat' => 0],
         ];
-    }
-
-    private function apptimaticEmailUnread(?Request $request): int
-    {
-        return $this->resolveApptimaticEmailUnreadCount($request ?? request());
-    }
-
-    private function resolveApptimaticEmailUnreadCount(Request $request): int
-    {
-        $fallback = app(ApptimaticEmailStubRepository::class)->unreadCount();
-
-        try {
-            if (! $request->hasSession()) {
-                return $fallback;
-            }
-
-            $mailSessionService = app(MailSessionService::class);
-            $imapInboxService = app(ImapInboxService::class);
-
-            if (! $imapInboxService->isAvailable()) {
-                return $fallback;
-            }
-
-            $session = $mailSessionService->validateSession($request);
-            $mailAccount = $session?->mailAccount;
-            if (! $session || ! $mailAccount) {
-                return $fallback;
-            }
-
-            $password = $mailSessionService->decryptPassword($request);
-            if (! is_string($password) || $password === '') {
-                return $fallback;
-            }
-
-            $token = (string) $request->session()->get(MailSessionService::SESSION_TOKEN_KEY, '');
-            $cacheKey = 'apptimatic_email_unread:' . $mailAccount->id . ':' . substr(hash('sha256', $token), 0, 16);
-
-            return (int) Cache::remember($cacheKey, now()->addSeconds(20), function () use ($imapInboxService, $mailAccount, $password): int {
-                return $imapInboxService->unreadCount($mailAccount, $password);
-            });
-        } catch (\Throwable) {
-            return $fallback;
-        }
     }
 
     /**

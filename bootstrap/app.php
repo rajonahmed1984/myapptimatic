@@ -102,8 +102,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.activity' => \App\Http\Middleware\TrackAuthenticatedUserActivity::class,
             'nocache' => \App\Http\Middleware\NoCacheHeaders::class,
             'login.trace' => \App\Http\Middleware\LoginTrace::class,
-            'email.auth' => \App\Http\Middleware\EnsureEmailAuthenticated::class,
-            'mail.session.fresh' => \App\Http\Middleware\ValidateMailSessionFreshness::class,
             'bkash.bridge' => \App\Http\Middleware\BkashBridgeMiddleware::class,
         ]);
 

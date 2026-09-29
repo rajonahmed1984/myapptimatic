@@ -11,8 +11,6 @@ use App\Http\Controllers\SalesRep\TasksController as SalesRepTasksController;
 use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
-use App\Http\Controllers\Mail\MailInboxController;
-use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Route;
 
@@ -66,51 +64,6 @@ Route::middleware([
         Route::get('/tasks', [SalesRepTasksController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('tasks.index');
         Route::get('/chats', [SalesRepChatController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('chats.index');
         Route::redirect('/chat', '/sales/chats');
-        Route::redirect('/mail', '/sales/apptimatic-email');
-        Route::prefix('apptimatic-email')
-            ->name('apptimatic-email.')
-            ->group(function () {
-                Route::get('/login', [MailLoginController::class, 'showLogin'])
-                    ->middleware(HandleInertiaRequests::class)
-                    ->name('login');
-                Route::post('/login', [MailLoginController::class, 'login'])
-                    ->middleware('throttle:mail-login')
-                    ->name('login.store');
-                Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
-
-                Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
-                    Route::get('/', fn () => redirect()->route('rep.apptimatic-email.inbox'));
-                    Route::get('/inbox', [MailInboxController::class, 'index'])
-                        ->middleware(HandleInertiaRequests::class)
-                        ->name('inbox');
-                    Route::get('/stream', [MailInboxController::class, 'stream'])
-                        ->name('stream');
-                    Route::post('/inbox/reply', [MailInboxController::class, 'reply'])
-                        ->name('reply');
-                    Route::post('/compose', [MailInboxController::class, 'compose'])
-                        ->name('compose');
-                    Route::post('/inbox/messages/{message}/move-trash', [MailInboxController::class, 'moveToTrash'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('move-trash');
-                    Route::post('/inbox/messages/{message}/restore', [MailInboxController::class, 'restoreFromTrash'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('restore');
-                    Route::post('/inbox/messages/{message}/delete', [MailInboxController::class, 'deleteForever'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('delete');
-                    Route::post('/inbox/messages/{message}/mark-unread', [MailInboxController::class, 'markUnread'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('mark-unread');
-                    Route::get('/inbox/attachment/{message}/{part}', [MailInboxController::class, 'attachment'])
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->where('part', '[0-9]+(?:\.[0-9]+)*')
-                        ->name('attachment');
-                    Route::get('/inbox/view={message}', [MailInboxController::class, 'show'])
-                        ->middleware(HandleInertiaRequests::class)
-                        ->where('message', '[A-Za-z0-9\-]+')
-                        ->name('show');
-                });
-            });
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('earnings.index');

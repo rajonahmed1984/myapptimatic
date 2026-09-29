@@ -37,6 +37,9 @@ class User extends Authenticatable
         'avatar_path',
         'nid_path',
         'cv_path',
+        'otp_enabled',
+        'login_otp_code',
+        'login_otp_expires_at',
     ];
 
     /**
@@ -47,6 +50,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'login_otp_code',
     ];
 
     /**
@@ -59,7 +63,18 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'otp_enabled' => 'boolean',
+            'login_otp_expires_at' => 'datetime',
         ];
+    }
+
+    public function requiresLoginOtp(string $portal = 'web'): bool
+    {
+        if ($portal === 'admin' || $this->isAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->otp_enabled;
     }
 
     public function customer(): BelongsTo

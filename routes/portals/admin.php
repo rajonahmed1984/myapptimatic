@@ -7,7 +7,6 @@ use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
 use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
-use App\Http\Controllers\Admin\MailAccountController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\CustomerProjectUserController;
@@ -96,8 +95,6 @@ use App\Http\Controllers\ProjectChatController;
 use App\Http\Controllers\PortalTaskController;
 use App\Http\Controllers\ProjectTaskChatController;
 use App\Http\Controllers\ProjectTaskViewController;
-use App\Http\Controllers\Mail\MailInboxController;
-use App\Http\Controllers\Mail\MailLoginController;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Support\UiFeature;
 use Illuminate\Http\Request;
@@ -167,72 +164,6 @@ Route::middleware([
         ->middleware(HandleInertiaRequests::class)
         ->name('chats.index');
     Route::redirect('/chat', '/admin/chats');
-    Route::redirect('/mail', '/admin/apptimatic-email');
-    Route::middleware('admin.role:master_admin,sub_admin,admin,support')
-        ->prefix('apptimatic-email')
-        ->name('apptimatic-email.')
-        ->group(function () {
-            Route::get('/login', [MailLoginController::class, 'showLogin'])
-                ->middleware(HandleInertiaRequests::class)
-                ->name('login');
-            Route::post('/login', [MailLoginController::class, 'login'])
-                ->middleware('throttle:mail-login')
-                ->name('login.store');
-            Route::post('/logout', [MailLoginController::class, 'logout'])->name('logout');
-
-            Route::middleware(['email.auth', 'mail.session.fresh'])->group(function () {
-                Route::get('/', fn () => redirect()->route('admin.apptimatic-email.inbox'));
-                Route::get('/inbox', [MailInboxController::class, 'index'])
-                    ->middleware(HandleInertiaRequests::class)
-                    ->name('inbox');
-                Route::get('/stream', [MailInboxController::class, 'stream'])
-                    ->name('stream');
-                Route::post('/inbox/reply', [MailInboxController::class, 'reply'])
-                    ->name('reply');
-                Route::post('/compose', [MailInboxController::class, 'compose'])
-                    ->name('compose');
-                Route::post('/inbox/messages/{message}/move-trash', [MailInboxController::class, 'moveToTrash'])
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->name('move-trash');
-                Route::post('/inbox/messages/{message}/restore', [MailInboxController::class, 'restoreFromTrash'])
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->name('restore');
-                Route::post('/inbox/messages/{message}/delete', [MailInboxController::class, 'deleteForever'])
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->name('delete');
-                Route::post('/inbox/messages/{message}/mark-unread', [MailInboxController::class, 'markUnread'])
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->name('mark-unread');
-                Route::get('/inbox/attachment/{message}/{part}', [MailInboxController::class, 'attachment'])
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->where('part', '[0-9]+(?:\.[0-9]+)*')
-                    ->name('attachment');
-                Route::get('/inbox/view={message}', [MailInboxController::class, 'show'])
-                    ->middleware(HandleInertiaRequests::class)
-                    ->where('message', '[A-Za-z0-9\-]+')
-                    ->name('show');
-            });
-
-            Route::middleware('admin.role:master_admin,sub_admin,admin')->group(function () {
-                Route::get('/manage', [MailAccountController::class, 'manage'])
-                    ->middleware(HandleInertiaRequests::class)
-                    ->name('manage');
-                Route::get('/accounts', [MailAccountController::class, 'index'])->name('accounts.index');
-                Route::post('/accounts', [MailAccountController::class, 'store'])->name('accounts.store');
-                Route::put('/accounts/{mailAccount}', [MailAccountController::class, 'update'])->name('accounts.update');
-                Route::delete('/accounts/{mailAccount}', [MailAccountController::class, 'destroy'])->name('accounts.destroy');
-
-                Route::put('/settings', [MailAccountController::class, 'updateSettings'])->name('settings.update');
-                Route::post('/settings/test', [MailAccountController::class, 'testConnection'])->name('settings.test');
-
-                Route::post('/accounts/{mailAccount}/assignments', [MailAccountController::class, 'storeAssignment'])
-                    ->name('assignments.store');
-                Route::put('/accounts/{mailAccount}/assignments/{assignment}', [MailAccountController::class, 'updateAssignment'])
-                    ->name('assignments.update');
-                Route::delete('/accounts/{mailAccount}/assignments/{assignment}', [MailAccountController::class, 'destroyAssignment'])
-                    ->name('assignments.destroy');
-            });
-        });
     Route::get('/projects/{project}/chat', [ProjectChatController::class, 'show'])->name('projects.chat');
     Route::get('/projects/{project}/chat/participants', [ProjectChatController::class, 'participants'])
         ->name('projects.chat.participants');

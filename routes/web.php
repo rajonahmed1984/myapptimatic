@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\Hr\PayrollController as HrPayrollController;
 use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryController;
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
 use App\Http\Controllers\AuthFresh\PortalLoginController;
+use App\Http\Controllers\AuthFresh\LoginOtpController;
 use App\Http\Controllers\AuthFresh\SocialLoginController;
 use App\Http\Controllers\AuthFresh\LogoutController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
@@ -244,6 +245,20 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web',
         ->middleware(HandleInertiaRequests::class)
         ->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+});
+
+Route::middleware(['nocache'])->group(function () {
+    Route::get('/login/otp', [LoginOtpController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('login.otp.show');
+    Route::post('/login/otp', [LoginOtpController::class, 'verify'])
+        ->middleware(['throttle:10,1'])
+        ->name('login.otp.verify');
+    Route::post('/login/otp/resend', [LoginOtpController::class, 'resend'])
+        ->middleware(['throttle:3,1'])
+        ->name('login.otp.resend');
+    Route::get('/login/otp/cancel', [LoginOtpController::class, 'cancel'])
+        ->name('login.otp.cancel');
 });
 
 Route::get('/auth/{provider}/redirect', [SocialLoginController::class, 'redirect'])->name('auth.redirect');
