@@ -17,7 +17,7 @@
   },
   "android": {
     "allowMixedContent": false,
-    "webContentsDebuggingEnabled": true,
+    "webContentsDebuggingEnabled": false,
     "backgroundColor": "#302B87",
     "appendUserAgent": "MyApptimaticApp"
   },
