@@ -269,6 +269,30 @@ class AdminNotificationService
         $this->sendGeneric($recipients, $subject, $bodyHtml, $this->resolveFromEmail(null), $companyName, [], MailCategory::SYSTEM);
     }
 
+    public function sendPayoutRequested(\App\Models\CommissionPayoutRequest $request): void
+    {
+        $recipients = $this->adminRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $request->loadMissing('salesRep');
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subject = 'Payout request from '.($request->salesRep?->name ?? 'a sales rep').': '.number_format((float) $request->amount, 2).' '.$request->currency;
+        $body = "{{rep_name}} requested a payout of {{amount}}.\n"
+            ."Note: {{note}}\n"
+            ."Review and pay it: {{url}}";
+
+        $bodyHtml = $this->formatEmailBody($body, [
+            '{{rep_name}}' => $request->salesRep?->name ?? '--',
+            '{{amount}}' => number_format((float) $request->amount, 2).' '.$request->currency,
+            '{{note}}' => $request->note ?: '--',
+            '{{url}}' => route('admin.sales-reps.show', ['sales_rep' => $request->sales_representative_id, 'tab' => 'payouts']),
+        ]);
+
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $this->resolveFromEmail(null), $companyName, [], MailCategory::BILLING);
+    }
+
     public function sendOrderAccepted(Order $order): void
     {
         $recipients = $this->adminRecipients();

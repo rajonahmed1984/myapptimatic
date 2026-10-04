@@ -728,6 +728,87 @@ class CommissionService
     }
 
     /**
+     * Pay a sales rep a set amount (an approved payout request) in one step.
+     *
+     * The amount is checked against what is payable now. Payable earnings the
+     * client has paid in full are marked paid against it, oldest first, while
+     * they fit; anything left over stays payable. The rep's balance is driven
+     * by the payout total either way.
+     */
+    public function payAmount(
+        int $salesRepId,
+        float $amount,
+        ?string $payoutMethod = null,
+        ?string $reference = null,
+        ?string $note = null,
+        string $currency = 'BDT'
+    ): CommissionPayout {
+        $amount = round($amount, 2);
+        $payable = (float) ($this->computeRepBalance($salesRepId)['payable_balance'] ?? 0);
+
+        if ($amount <= 0 || $amount > $payable + 0.009) {
+            throw new \RuntimeException(sprintf('Only %s is payable now.', number_format($payable, 2)));
+        }
+
+        $payout = DB::transaction(function () use ($salesRepId, $amount, $payoutMethod, $reference, $note, $currency) {
+            $now = Carbon::now();
+            $payload = [
+                'sales_representative_id' => $salesRepId,
+                'total_amount' => $amount,
+                'currency' => $currency,
+                'payout_method' => $payoutMethod,
+                'reference' => $reference,
+                'note' => $note,
+                'status' => 'paid',
+                'paid_at' => $now,
+            ];
+
+            if ($this->commissionPayoutHasColumn('type')) {
+                $payload['type'] = 'regular';
+            }
+
+            $payout = CommissionPayout::create($payload);
+
+            $earnings = CommissionEarning::query()
+                ->where('sales_representative_id', $salesRepId)
+                ->where('status', 'payable')
+                ->whereNull('commission_payout_id')
+                ->orderBy('payable_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $ratios = app(SalesRepStatementService::class)->realization($earnings);
+
+            $covered = 0.0;
+            foreach ($earnings as $earning) {
+                $commission = (float) $earning->commission_amount;
+
+                if (($ratios[$earning->id] ?? 0) < 0.999 || $covered + $commission > $amount + 0.009) {
+                    continue;
+                }
+
+                $earning->update([
+                    'commission_payout_id' => $payout->id,
+                    'status' => 'paid',
+                    'paid_at' => $now,
+                ]);
+                $this->logStatusChange($earning, 'payable', 'paid', 'payout_request_paid', ['payout_id' => $payout->id]);
+                $covered += $commission;
+            }
+
+            return $payout;
+        });
+
+        try {
+            app(SalesRepNotificationService::class)->sendCommissionPayoutNotification($payout->fresh(), 'paid');
+        } catch (\Throwable) {
+            // Notification failures should not block the payment.
+        }
+
+        return $payout;
+    }
+
+    /**
     * Reverse a payout and return earnings to payable state.
     */
     public function reversePayout(CommissionPayout $payout, ?string $note = null): CommissionPayout

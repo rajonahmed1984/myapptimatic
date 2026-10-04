@@ -36,6 +36,116 @@ const earningStatusBadgeClass = (status) => {
     return 'border-slate-300 bg-slate-50 text-slate-700';
 };
 
+const requestStatusLabel = {
+    pending: ['Waiting', 'border-amber-200 bg-amber-50 text-amber-700'],
+    paid: ['Paid', 'border-emerald-200 bg-emerald-50 text-emerald-700'],
+    rejected: ['Declined', 'border-rose-200 bg-rose-50 text-rose-700'],
+    cancelled: ['Cancelled by rep', 'border-slate-200 bg-slate-100 text-slate-600'],
+};
+
+function PayoutRequestsPanel({ requests = [], csrf, paymentMethods = [], error, onlyPending = false }) {
+    const rows = onlyPending ? requests.filter((item) => item.status === 'pending') : requests;
+
+    if (!rows.length) {
+        return onlyPending ? null : (
+            <div className="card mb-4 p-4 text-sm text-slate-500">No payout requests from this rep yet.</div>
+        );
+    }
+
+    return (
+        <section className="mb-4 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+            <div className="border-b border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                Payout requests
+            </div>
+            {error ? <div className="mx-4 mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div> : null}
+            <div className="divide-y divide-slate-100">
+                {rows.map((item) => {
+                    const [label, badge] = requestStatusLabel[item.status] || requestStatusLabel.cancelled;
+
+                    if (item.status !== 'pending') {
+                        return (
+                            <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                                <div>
+                                    <span className="font-semibold tabular-nums text-slate-900">{taka(item.amount)}</span>
+                                    <span className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge}`}>{label}</span>
+                                    <div className="text-xs text-slate-500">Requested {item.requested_at}{item.note ? ` · “${item.note}”` : ''}</div>
+                                </div>
+                                <div className="text-right text-xs text-slate-600">
+                                    {item.status === 'paid' ? (
+                                        <>Paid {taka(item.paid_amount)} by <strong>{item.method || '--'}</strong>{item.reference ? ` · ref ${item.reference}` : ''}</>
+                                    ) : item.admin_note || ''}
+                                    <div className="text-slate-400">{item.processed_at}{item.processed_by ? ` · ${item.processed_by}` : ''}</div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    const payable = Number(item.payable_now || 0);
+
+                    return (
+                        <div key={item.id} className="space-y-3 px-4 py-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <span className="text-lg font-bold tabular-nums text-slate-900">{taka(item.amount)}</span>
+                                    <span className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge}`}>{label}</span>
+                                    <div className="text-xs text-slate-500">Requested {item.requested_at}{item.note ? ` · “${item.note}”` : ''}</div>
+                                </div>
+                                <div className={`text-xs ${payable + 0.009 < Number(item.amount) ? 'text-rose-700' : 'text-slate-500'}`}>
+                                    Payable now: <strong>{taka(payable)}</strong>
+                                </div>
+                            </div>
+
+                            {payable > 0.009 ? (
+                                <form method="POST" action={item.routes?.approve} data-native="true" className="grid gap-3 md:grid-cols-6">
+                                    <input type="hidden" name="_token" value={csrf} />
+                                    <label className="md:col-span-1">
+                                        <span className="mb-1 block text-xs font-semibold text-slate-600">Pay (৳)</span>
+                                        <input type="number" name="amount" required min="0.01" max={payable} step="0.01" defaultValue={payable.toFixed(2)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    </label>
+                                    <label className="md:col-span-1">
+                                        <span className="mb-1 block text-xs font-semibold text-slate-600">Paid by</span>
+                                        <select name="payout_method" required defaultValue="" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                                            <option value="" disabled>Method…</option>
+                                            {paymentMethods.map((method) => (
+                                                <option key={method.code} value={method.code}>{method.name}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="md:col-span-1">
+                                        <span className="mb-1 block text-xs font-semibold text-slate-600">Reference</span>
+                                        <input type="text" name="reference" placeholder="Txn ID" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    </label>
+                                    <label className="md:col-span-2">
+                                        <span className="mb-1 block text-xs font-semibold text-slate-600">Note to rep</span>
+                                        <input type="text" name="admin_note" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    </label>
+                                    <div className="flex items-end md:col-span-1">
+                                        <button type="submit" className="w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                                            Mark as paid
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                                    Nothing is payable now (the rep's balance changed since the request). Decline it with a note.
+                                </div>
+                            )}
+
+                            <form method="POST" action={item.routes?.reject} data-native="true" className="flex flex-wrap items-center gap-2">
+                                <input type="hidden" name="_token" value={csrf} />
+                                <input type="text" name="admin_note" placeholder="Reason for declining (shown to the rep)" className="min-w-[16rem] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs" />
+                                <button type="submit" className="rounded-full border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                                    Decline
+                                </button>
+                            </form>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
 function RecoveryForm({ action, csrf, holding, paymentMethods = [], error }) {
     if (!action) return null;
 
@@ -101,6 +211,7 @@ export default function Show({
     advanceSources = [],
     paymentMethods = [],
     statement = null,
+    payoutRequests = [],
     routes = {},
 }) {
     const { props } = usePage();
@@ -235,6 +346,14 @@ export default function Show({
 
             {tab === 'profile' ? (
                 <>
+                    <PayoutRequestsPanel
+                        requests={payoutRequests}
+                        csrf={csrf}
+                        paymentMethods={paymentMethods}
+                        error={props?.errors?.payout_request}
+                        onlyPending
+                    />
+
                     <CommissionStatement
                         statement={statement}
                         audience="admin"
@@ -406,7 +525,17 @@ export default function Show({
 
             {tab === 'earnings' ? <EarningsTable rows={recentEarnings} summary={summary} statement={statement} route={routes?.commission_payout_create} /> : null}
 
-            {tab === 'payouts' ? <PayoutsTable rows={recentPayouts} /> : null}
+            {tab === 'payouts' ? (
+                <>
+                    <PayoutRequestsPanel
+                        requests={payoutRequests}
+                        csrf={csrf}
+                        paymentMethods={paymentMethods}
+                        error={props?.errors?.payout_request}
+                    />
+                    <PayoutsTable rows={recentPayouts} />
+                </>
+            ) : null}
 
             {tab === 'projects' ? <ProjectsTable rows={projects} /> : null}
 

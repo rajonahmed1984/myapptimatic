@@ -66,6 +66,8 @@ Route::middleware([
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('payouts.index');
+        Route::post('/payouts/requests', [SalesRepPayoutController::class, 'storeRequest'])->middleware('throttle:10,1')->name('payouts.requests.store');
+        Route::post('/payouts/requests/{payoutRequest}/cancel', [SalesRepPayoutController::class, 'cancelRequest'])->name('payouts.requests.cancel');
         Route::get('/projects', [\App\Http\Controllers\SalesRep\ProjectController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('projects.index');
         Route::get('/projects/{project}', [\App\Http\Controllers\SalesRep\ProjectController::class, 'show'])->middleware(HandleInertiaRequests::class)->name('projects.show');
         Route::post('/projects/{project}/tasks', [\App\Http\Controllers\SalesRep\ProjectTaskController::class, 'store'])->name('projects.tasks.store');

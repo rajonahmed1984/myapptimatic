@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommissionAuditLog;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
+use App\Models\CommissionPayoutRequest;
 use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
@@ -19,6 +20,7 @@ use App\Models\User;
 use App\Models\UserSession;
 use App\Services\CommissionService;
 use App\Services\SalesRepNotificationService;
+use App\Services\SalesRepPayoutRequestService;
 use App\Services\SalesRepStatementService;
 use App\Support\AjaxResponse;
 use App\Support\PaginationPayload;
@@ -77,6 +79,12 @@ class SalesRepresentativeController extends Controller
 
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
         $statementService = app(SalesRepStatementService::class);
+        $pendingRequests = CommissionPayoutRequest::query()
+            ->whereIn('sales_representative_id', $reps->pluck('id'))
+            ->where('status', CommissionPayoutRequest::STATUS_PENDING)
+            ->selectRaw('sales_representative_id, SUM(amount) as amount')
+            ->groupBy('sales_representative_id')
+            ->pluck('amount', 'sales_representative_id');
         $statements = $reps->getCollection()->mapWithKeys(fn (SalesRepresentative $rep) => [
             $rep->id => $statementService->forRep($rep->id),
         ])->all();
@@ -86,7 +94,7 @@ class SalesRepresentativeController extends Controller
             'filters' => [
                 'search' => $search,
             ],
-            'reps' => $this->serializeRepIndexRows($reps->getCollection(), $loginStatuses, $statements),
+            'reps' => $this->serializeRepIndexRows($reps->getCollection(), $loginStatuses, $statements, $pendingRequests->all()),
             'pagination' => PaginationPayload::make($reps),
             'routes' => [
                 'index' => route('admin.sales-reps.index'),
@@ -703,6 +711,7 @@ class SalesRepresentativeController extends Controller
                     : null,
             ],
             'statement' => app(SalesRepStatementService::class)->forRep($salesRep->id),
+            'payoutRequests' => $this->serializePayoutRequests($salesRep),
             'tab' => $tab,
             'tabs' => [
                 ['key' => 'profile', 'label' => 'Profile'],
@@ -1269,6 +1278,100 @@ class SalesRepresentativeController extends Controller
         ));
     }
 
+    /**
+     * The rep's payout requests, waiting ones first, with what each paid.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializePayoutRequests(SalesRepresentative $salesRep): array
+    {
+        $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
+        $methodNames = \App\Http\Controllers\SalesRep\PayoutController::methodNames();
+        $availability = app(SalesRepPayoutRequestService::class)->availability($salesRep);
+
+        return CommissionPayoutRequest::query()
+            ->with('processor:id,name')
+            ->where('sales_representative_id', $salesRep->id)
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+            ->latest('id')
+            ->limit(20)
+            ->get()
+            ->map(fn (CommissionPayoutRequest $item) => [
+                'id' => $item->id,
+                'amount' => (float) $item->amount,
+                'paid_amount' => $item->paid_amount !== null ? (float) $item->paid_amount : null,
+                'currency' => $item->currency,
+                'status' => $item->status,
+                'note' => $item->note,
+                'admin_note' => $item->admin_note,
+                'method' => $item->payout_method ? ($methodNames[$item->payout_method] ?? $item->payout_method) : null,
+                'reference' => $item->reference,
+                'processed_by' => $item->processor?->name,
+                'requested_at' => $item->created_at?->format($dateTimeFormat),
+                'processed_at' => $item->processed_at?->format($dateTimeFormat),
+                // What can actually be paid now, in case it changed since the request.
+                'payable_now' => $item->isPending() ? max(0, min((float) $item->amount, (float) $availability['available'])) : null,
+                'routes' => $item->isPending() ? [
+                    'approve' => route('admin.sales-reps.payout-requests.approve', [$salesRep, $item]),
+                    'reject' => route('admin.sales-reps.payout-requests.reject', [$salesRep, $item]),
+                ] : null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function approvePayoutRequest(
+        Request $request,
+        SalesRepresentative $salesRep,
+        CommissionPayoutRequest $payoutRequest,
+        SalesRepPayoutRequestService $requests
+    ) {
+        abort_unless((int) $payoutRequest->sales_representative_id === (int) $salesRep->id, 404);
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payout_method' => ['required', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $requests->approve(
+                $payoutRequest,
+                (float) $data['amount'],
+                $data['payout_method'],
+                $data['reference'] ?? null,
+                $data['admin_note'] ?? null,
+                $request->user()?->id
+            );
+        } catch (\RuntimeException $exception) {
+            return back()->withErrors(['payout_request' => $exception->getMessage()])->withInput();
+        }
+
+        return back()->with('status', sprintf('Paid %s to %s.', number_format((float) $data['amount'], 2), $salesRep->name));
+    }
+
+    public function rejectPayoutRequest(
+        Request $request,
+        SalesRepresentative $salesRep,
+        CommissionPayoutRequest $payoutRequest,
+        SalesRepPayoutRequestService $requests
+    ) {
+        abort_unless((int) $payoutRequest->sales_representative_id === (int) $salesRep->id, 404);
+
+        $data = $request->validate([
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $requests->reject($payoutRequest, $data['admin_note'] ?? null, $request->user()?->id);
+        } catch (\RuntimeException $exception) {
+            return back()->withErrors(['payout_request' => $exception->getMessage()]);
+        }
+
+        return back()->with('status', 'Payout request declined.');
+    }
+
     public function impersonate(Request $request, SalesRepresentative $salesRep)
     {
         if ($request->session()->has('impersonator_id')) {
@@ -1470,11 +1573,11 @@ class SalesRepresentativeController extends Controller
      * @param  array<int, array{status:string,last_login_at:Carbon|null}>  $loginStatuses
      * @return array<int, array<string, mixed>>
      */
-    private function serializeRepIndexRows(Collection $reps, array $loginStatuses, array $statements = []): array
+    private function serializeRepIndexRows(Collection $reps, array $loginStatuses, array $statements = [], array $pendingRequests = []): array
     {
         $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
 
-        return $reps->map(function (SalesRepresentative $rep) use ($loginStatuses, $dateTimeFormat, $statements): array {
+        return $reps->map(function (SalesRepresentative $rep) use ($loginStatuses, $dateTimeFormat, $statements, $pendingRequests): array {
             $statement = $statements[$rep->id] ?? null;
             $loginMeta = $loginStatuses[$rep->id] ?? ['status' => 'logout', 'last_login_at' => null];
             $loginStatus = is_array($loginMeta) ? (string) ($loginMeta['status'] ?? 'logout') : 'logout';
@@ -1496,6 +1599,7 @@ class SalesRepresentativeController extends Controller
                 'status' => $rep->status,
                 'status_label' => ucfirst((string) $rep->status),
                 'referred_customers_count' => (int) ($rep->referred_customers_count ?? 0),
+                'pending_request_amount' => (float) ($pendingRequests[$rep->id] ?? 0),
                 'statement' => $statement ? [
                     'commission_total' => $statement['commission_total'],
                     'commission_earned' => $statement['commission_earned'],

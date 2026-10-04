@@ -139,7 +139,16 @@ export default function Index({
                             header: 'Balance',
                             headerClassName: 'text-right',
                             cellClassName: 'text-right',
-                            render: (rep) => <BalanceBadge balance={rep.statement?.balance} />,
+                            render: (rep) => (
+                                <>
+                                    <BalanceBadge balance={rep.statement?.balance} />
+                                    {Number(rep.pending_request_amount || 0) > 0 ? (
+                                        <a href={`${rep.routes?.show}?tab=payouts`} data-native="true" className="mt-1 block text-[11px] font-semibold text-amber-700 hover:text-amber-600">
+                                            Payout requested {taka(rep.pending_request_amount)}
+                                        </a>
+                                    ) : null}
+                                </>
+                            ),
                         },
                         {
                             key: 'status',

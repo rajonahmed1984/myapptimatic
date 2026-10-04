@@ -82,6 +82,7 @@ class HeaderStatsService
                     ->whereColumn('last_verified_at', '>=', 'last_check_at')
                     ->count(),
                 'unread_chatbot_leads' => ChatbotLead::where('is_read', false)->count(),
+                'pending_payout_requests' => \App\Models\CommissionPayoutRequest::where('status', 'pending')->count(),
             ];
         });
     }
@@ -262,6 +263,7 @@ class HeaderStatsService
                 'active_licenses' => 0,
                 'verified_active_synced_licenses' => 0,
                 'unread_chatbot_leads' => 0,
+                'pending_payout_requests' => 0,
             ],
             'employee' => ['task_badge' => 0, 'unread_chat' => 0],
             'client' => [

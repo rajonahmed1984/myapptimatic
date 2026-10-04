@@ -227,7 +227,11 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 >
                     Orders
                 </NavLink>
-                <NavLink href="/admin/sales-reps" active={isActiveRoute(currentUrl, '/admin/sales-reps*')}>
+                <NavLink
+                    href="/admin/sales-reps"
+                    active={isActiveRoute(currentUrl, '/admin/sales-reps*')}
+                    badge={adminStats?.pending_payout_requests}
+                >
                     Sales Representatives
                 </NavLink>
             </div>
