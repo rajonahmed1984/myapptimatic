@@ -57,6 +57,42 @@ export default function Create({
     });
     const [isCustomerMenuOpen, setIsCustomerMenuOpen] = React.useState(false);
 
+    // Sales rep amounts are pre-filled from each rep's Project % of the budget,
+    // and kept in step with the budget until the admin types their own amount.
+    const [budget, setBudget] = React.useState(String(form.total_budget || ''));
+    const [repAmounts, setRepAmounts] = React.useState(() => Object.fromEntries(
+        salesReps.map((rep) => [rep.id, String(rep.amount ?? 0)]),
+    ));
+    const [autoAmountRepIds, setAutoAmountRepIds] = React.useState([]);
+    const [referralNote, setReferralNote] = React.useState('');
+    const repPercentAmount = (rep, budgetValue = budget) => {
+        const percent = Number(rep?.project_commission_percentage);
+        const total = Number(budgetValue || 0);
+        return Number.isFinite(percent) && percent > 0 && total > 0 ? (total * percent / 100).toFixed(2) : null;
+    };
+    const selectRepWithDefaultAmount = (rep) => {
+        setSelectedSalesRepIds((current) => (current.includes(Number(rep.id)) ? current : [...current, Number(rep.id)]));
+        if (Number(repAmounts[rep.id] || 0) <= 0 && rep.project_commission_percentage) {
+            setAutoAmountRepIds((current) => (current.includes(rep.id) ? current : [...current, rep.id]));
+            const amount = repPercentAmount(rep);
+            if (amount !== null) {
+                setRepAmounts((current) => ({ ...current, [rep.id]: amount }));
+            }
+        }
+    };
+    const handleBudgetChange = (value) => {
+        setBudget(value);
+        setRepAmounts((current) => {
+            const next = { ...current };
+            salesReps.forEach((rep) => {
+                if (autoAmountRepIds.includes(rep.id)) {
+                    next[rep.id] = repPercentAmount(rep, value) ?? next[rep.id];
+                }
+            });
+            return next;
+        });
+    };
+
     const [taskRows, setTaskRows] = React.useState(() => {
         const seeded = asArray(tasks).map((task) => ({ id: rowId(), ...task, descriptions: asArray(task?.descriptions).length ? task.descriptions : [''] }));
         return seeded.length
@@ -142,7 +178,33 @@ export default function Create({
         setSelectedCustomerId(String(customer.id));
         setCustomerSearch(formatCustomerLabel(customer));
         setIsCustomerMenuOpen(false);
+
+        const referringRep = salesReps.find((rep) => Number(rep.id) === Number(customer.referred_by_sales_rep_id));
+        if (referringRep) {
+            selectRepWithDefaultAmount(referringRep);
+            setReferralNote(
+                `${referringRep.name} referred this customer, so they were added below`
+                + (referringRep.project_commission_percentage ? ` at their ${referringRep.project_commission_percentage}% of the budget` : '')
+                + '. Change or untick if needed.',
+            );
+        } else {
+            setReferralNote('');
+        }
     };
+
+    // Opened for a specific customer (e.g. from their page): same as picking them,
+    // unless reps are already chosen (a form returned with errors).
+    React.useEffect(() => {
+        if (!selectedCustomerId || selectedSalesRepIds.length > 0) {
+            return;
+        }
+        const customer = customers.find((item) => String(item.id) === selectedCustomerId);
+        if (customer?.referred_by_sales_rep_id) {
+            handleCustomerSelect(customer);
+        }
+        // Only on first render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <>
@@ -290,16 +352,42 @@ export default function Create({
                             </div>
                             <div>
                                 <label className="text-xs text-slate-500">Sales representatives</label>
+                                {referralNote ? (
+                                    <div className="mt-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800">{referralNote}</div>
+                                ) : null}
                                 <div className="mt-2 space-y-2 rounded-2xl border border-slate-300 bg-white/90 p-3">
                                     {salesReps.map((rep) => (
                                         <div key={rep.id} className="flex flex-wrap items-center justify-between gap-3">
                                             <label className="flex items-center gap-2 text-xs text-slate-600">
-                                                <input type="checkbox" name="sales_rep_ids[]" value={rep.id} checked={selectedSalesRepIds.includes(Number(rep.id))} onChange={() => toggleId(setSelectedSalesRepIds, selectedSalesRepIds, Number(rep.id))} />
+                                                <input
+                                                    type="checkbox"
+                                                    name="sales_rep_ids[]"
+                                                    value={rep.id}
+                                                    checked={selectedSalesRepIds.includes(Number(rep.id))}
+                                                    onChange={() => (selectedSalesRepIds.includes(Number(rep.id))
+                                                        ? toggleId(setSelectedSalesRepIds, selectedSalesRepIds, Number(rep.id))
+                                                        : selectRepWithDefaultAmount(rep))}
+                                                />
                                                 <span>{rep.name} ({rep.email})</span>
+                                                {rep.project_commission_percentage ? (
+                                                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">{rep.project_commission_percentage}%</span>
+                                                ) : null}
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs text-slate-500">Amount</span>
-                                                <input type="number" min="0" step="0.01" name={`sales_rep_amounts[${rep.id}]`} defaultValue={rep.amount ?? 0} className="w-28 rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600" />
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    name={`sales_rep_amounts[${rep.id}]`}
+                                                    value={repAmounts[rep.id] ?? ''}
+                                                    onChange={(event) => {
+                                                        const value = event.target.value;
+                                                        setRepAmounts((current) => ({ ...current, [rep.id]: value }));
+                                                        setAutoAmountRepIds((current) => current.filter((id) => id !== rep.id));
+                                                    }}
+                                                    className="w-28 rounded-full border border-slate-300 bg-white px-3 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                                                />
                                             </div>
                                         </div>
                                     ))}
@@ -330,7 +418,7 @@ export default function Create({
                         description="Define project budget, initial payment, and currency."
                     >
                         <div className="grid gap-4 md:grid-cols-4">
-                            <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" defaultValue={form.total_budget || ''} className="ui-input mt-1" required /></div>
+                            <div><label className="text-xs text-slate-500">Total budget</label><input name="total_budget" type="number" step="0.01" value={budget} onChange={(event) => handleBudgetChange(event.target.value)} className="ui-input mt-1" required /></div>
                             <div><label className="text-xs text-slate-500">Initial payment</label><input name="initial_payment_amount" type="number" step="0.01" defaultValue={form.initial_payment_amount || ''} className="ui-input mt-1" required /></div>
                             <div>
                                 <label className="text-xs text-slate-500">Currency</label>

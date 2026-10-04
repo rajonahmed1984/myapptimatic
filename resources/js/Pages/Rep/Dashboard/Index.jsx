@@ -30,6 +30,21 @@ function ReferralCard({ referral }) {
                         Customers who sign up through this link are assigned to you, and you earn commission on what they pay.
                     </p>
                     <div className="mt-2 break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800">{referral.url}</div>
+                    {Array.isArray(referral.customers) && referral.customers.length > 0 ? (
+                        <div className="mt-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                Signed up through your link{referral.customers_count > referral.customers.length ? ` (latest ${referral.customers.length})` : ''}
+                            </div>
+                            <ul className="mt-1 flex flex-wrap gap-1.5">
+                                {referral.customers.map((customer) => (
+                                    <li key={customer.id} className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs text-slate-700">
+                                        {customer.name}
+                                        {customer.joined ? <span className="ml-1 text-slate-400">· {customer.joined}</span> : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                     <div className="text-right">

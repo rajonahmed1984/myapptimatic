@@ -126,7 +126,7 @@ class ProjectController extends Controller
             $defaultCurrency = Currency::DEFAULT;
         }
 
-        $customers = Customer::orderBy('name')->get(['id', 'name', 'company_name']);
+        $customers = Customer::orderBy('name')->get(['id', 'name', 'company_name', 'referred_by_sales_rep_id']);
         $requestedCustomerId = $request->integer('customer_id');
         $selectedCustomerId = $customers->contains('id', $requestedCustomerId) ? (string) $requestedCustomerId : '';
         $employees = Employee::where('status', 'active')
@@ -134,7 +134,7 @@ class ProjectController extends Controller
             ->get(['id', 'name', 'designation', 'employment_type']);
         $salesReps = SalesRepresentative::where('status', 'active')
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'project_commission_percentage']);
 
         $selectedSalesRepIds = collect(old('sales_rep_ids', []))
             ->map(fn ($id) => (int) $id)
@@ -161,6 +161,8 @@ class ProjectController extends Controller
                 ->map(fn (Customer $customer) => [
                     'id' => $customer->id,
                     'display_name' => $customer->display_name,
+                    // The rep whose referral link brought this customer in.
+                    'referred_by_sales_rep_id' => $customer->referred_by_sales_rep_id,
                 ])
                 ->values(),
             'orders' => Order::latest()->limit(50)->get(['id', 'order_number']),
@@ -180,6 +182,9 @@ class ProjectController extends Controller
                 'email' => $salesRep->email,
                 'selected' => $selectedSalesRepIds->contains($salesRep->id),
                 'amount' => old('sales_rep_amounts.'.$salesRep->id, 0),
+                'project_commission_percentage' => $salesRep->project_commission_percentage !== null
+                    ? (float) $salesRep->project_commission_percentage
+                    : null,
             ])->values(),
             'currencyOptions' => Currency::allowed(),
             'taskTypeOptions' => TaskSettings::taskTypeOptions(),

@@ -72,6 +72,18 @@ class DashboardController extends Controller
                 'code' => (string) $rep->referral_code,
                 'url' => $rep->referral_code ? $rep->referralUrl() : null,
                 'customers_count' => $rep->referredCustomers()->count(),
+                // Latest sign-ups through the link; name and when only.
+                'customers' => $rep->referredCustomers()
+                    ->latest('id')
+                    ->limit(10)
+                    ->get(['id', 'name', 'company_name', 'created_at'])
+                    ->map(fn (\App\Models\Customer $customer) => [
+                        'id' => $customer->id,
+                        'name' => (string) ($customer->company_name ?: $customer->name),
+                        'joined' => $customer->created_at?->format((string) config('app.date_format', 'd-m-Y')),
+                    ])
+                    ->values()
+                    ->all(),
             ],
             'currency' => $currency,
             'earned_this_month' => (float) $earnedThisMonth,

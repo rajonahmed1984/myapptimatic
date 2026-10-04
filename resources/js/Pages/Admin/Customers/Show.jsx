@@ -70,6 +70,7 @@ export default function Show({
     currency = {},
     metrics = {},
     sales_rep_info = null,
+    referred_by: referredBy = null,
     sales_rep_summaries = [],
     subscriptions = [],
     project_clients = [],
@@ -366,9 +367,16 @@ export default function Show({
                                     </div>
                                 </div>
 
-                                {sales_rep_info ? (
+                                {sales_rep_info || referredBy ? (
                                     <div className="mt-5 border-t border-slate-200 pt-5">
                                         <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Sales Representative</div>
+                                        {referredBy ? (
+                                            <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-800">
+                                                Signed up through{' '}
+                                                <a href={referredBy.show_route} data-native="true" className="font-semibold hover:underline">{referredBy.name}</a>'s referral link
+                                            </div>
+                                        ) : null}
+                                        {sales_rep_info ? (
                                         <div className="mt-3 space-y-2">
                                             <div className="flex items-start gap-3">
                                                 <span className="text-slate-500">Name</span>
@@ -393,6 +401,7 @@ export default function Show({
                                                 </span>
                                             </div>
                                         </div>
+                                        ) : null}
                                     </div>
                                 ) : null}
                             </div>

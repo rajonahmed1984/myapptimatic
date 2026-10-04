@@ -498,9 +498,18 @@ class CustomerController extends Controller
         $dateFormat = config('app.date_format', 'd-m-Y');
         $dateTimeFormat = config('app.datetime_format', 'd-m-Y h:i A');
 
+        // The rep whose referral link this customer signed up through.
+        $referredBy = $customer->referred_by_sales_rep_id
+            ? \App\Models\SalesRepresentative::find($customer->referred_by_sales_rep_id, ['id', 'name'])
+            : null;
+
         return Inertia::render('Admin/Customers/Show', [
             'pageTitle' => 'Customer Details',
             'sales_rep_info' => $salesRepInfo,
+            'referred_by' => $referredBy ? [
+                'name' => $referredBy->name,
+                'show_route' => route('admin.sales-reps.show', $referredBy->id, false),
+            ] : null,
             'tab' => $tab,
             'tabs' => collect($allowedTabs)->map(function (string $key) use ($customer) {
                 $label = match ($key) {
