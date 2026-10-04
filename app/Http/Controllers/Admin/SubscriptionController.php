@@ -10,8 +10,10 @@ use App\Models\MyBuildingProvision;
 use App\Models\Plan;
 use App\Models\SalesRepresentative;
 use App\Models\Subscription;
-use App\Services\AccessBlockService;
 use App\Services\BillingService;
+use App\Services\LicenseLifecycleService;
+use App\Services\MyBuildingProvisioner;
+use App\Services\SubscriptionCancellationService;
 use App\Support\AjaxResponse;
 use App\Support\PaginationPayload;
 use Carbon\Carbon;
@@ -21,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -28,6 +31,8 @@ class SubscriptionController extends Controller
 {
     public function index(Request $request): InertiaResponse
     {
+        $this->authorize('viewAny', Subscription::class);
+
         $payload = $this->indexPayload($request);
 
         return Inertia::render(
@@ -41,6 +46,8 @@ class SubscriptionController extends Controller
 
     public function create(Request $request): InertiaResponse
     {
+        $this->authorize('create', Subscription::class);
+
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
         $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
@@ -53,6 +60,8 @@ class SubscriptionController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
+        $this->authorize('create', Subscription::class);
+
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'plan_id' => ['required', 'exists:plans,id'],
@@ -108,7 +117,9 @@ class SubscriptionController extends Controller
                 'current_period_start' => $startDate->toDateString(),
                 'current_period_end' => $periodEnd->toDateString(),
                 'next_invoice_at' => $nextInvoiceAt->toDateString(),
-                'auto_renew' => $request->boolean('auto_renew'),
+                // Renewing is the norm; a request that leaves the field out must
+                // not quietly create a subscription the billing cycle cancels.
+                'auto_renew' => $request->boolean('auto_renew', true),
                 'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
                 'notes' => $data['notes'] ?? null,
             ]);
@@ -171,6 +182,8 @@ class SubscriptionController extends Controller
 
     public function edit(Request $request, Subscription $subscription): InertiaResponse
     {
+        $this->authorize('view', $subscription);
+
         $subscription = $subscription->load([
             'customer',
             'plan.product',
@@ -192,6 +205,8 @@ class SubscriptionController extends Controller
 
     public function show(Request $request, Subscription $subscription): InertiaResponse
     {
+        $this->authorize('view', $subscription);
+
         $subscription->load([
             'customer',
             'plan.product',
@@ -317,6 +332,8 @@ class SubscriptionController extends Controller
         Subscription $subscription,
         \App\Services\OwnershipMoveService $moveService
     ): RedirectResponse {
+        $this->authorize('update', $subscription);
+
         $data = $request->validate([
             'customer_id' => [
                 'required',
@@ -354,6 +371,8 @@ class SubscriptionController extends Controller
 
     public function renewNow(Request $request, Subscription $subscription, BillingService $billingService): RedirectResponse
     {
+        $this->authorize('update', $subscription);
+
         if (! in_array((string) $subscription->status, ['active', 'suspended'], true)) {
             return redirect()->route('admin.subscriptions.show', $subscription)
                 ->with('error', 'Only active or suspended subscriptions can be renewed.');
@@ -377,22 +396,62 @@ class SubscriptionController extends Controller
 
     public function changePlan(Request $request, Subscription $subscription): RedirectResponse
     {
+        $this->authorize('update', $subscription);
+
         $data = $request->validate([
             'plan_id' => ['required', 'exists:plans,id', Rule::notIn([$subscription->plan_id])],
             'subscription_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $oldPlan = $subscription->plan;
-        $newPlan = Plan::findOrFail($data['plan_id']);
-        $newAmount = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null
-            ? (float) $data['subscription_amount']
-            : (float) $newPlan->price;
+        if ((string) $subscription->status === 'cancelled') {
+            return redirect()->route('admin.subscriptions.show', $subscription)
+                ->with('error', 'A cancelled subscription cannot change plan.');
+        }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newPlan, $newAmount) {
+        $oldPlan = $subscription->plan;
+        $newPlan = Plan::with('product')->findOrFail($data['plan_id']);
+        $oldAmount = (float) ($subscription->subscription_amount ?? $oldPlan?->price ?? 0);
+        $amountGiven = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null;
+
+        if ($newPlan->isPerFlat()) {
+            // A per-flat price is a rate, not the subscription amount. Use the
+            // building's flat count; without one there is nothing to multiply.
+            $contractedFlats = $this->provisionFor($subscription)?->contracted_flats;
+
+            if (! $contractedFlats && ! $amountGiven) {
+                throw ValidationException::withMessages([
+                    'subscription_amount' => 'This plan is priced per flat. Enter the amount, or set the contracted flats from Edit first.',
+                ]);
+            }
+
+            $newAmount = $contractedFlats
+                ? $this->perFlatSubscriptionAmount($newPlan, $contractedFlats)
+                : (float) $data['subscription_amount'];
+        } else {
+            $newAmount = $amountGiven ? (float) $data['subscription_amount'] : (float) $newPlan->price;
+        }
+
+        // Keep the sales rep on the same percentage of the new amount.
+        $commissionAmount = $subscription->sales_rep_commission_amount !== null && $oldAmount > 0
+            ? round(((float) $subscription->sales_rep_commission_amount / $oldAmount) * $newAmount, 2)
+            : $subscription->sales_rep_commission_amount;
+
+        $licensesRepointed = \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newPlan, $newAmount, $commissionAmount) {
             $subscription->update([
                 'plan_id' => $newPlan->id,
                 'subscription_amount' => $newAmount,
+                'sales_rep_commission_amount' => $commissionAmount,
             ]);
+
+            // Licenses follow the product the subscription now sells, as they
+            // do when a license is moved onto another subscription.
+            if (! $newPlan->product_id) {
+                return 0;
+            }
+
+            return $subscription->licenses()
+                ->where('product_id', '!=', $newPlan->product_id)
+                ->update(['product_id' => $newPlan->product_id]);
         });
 
         \App\Models\StatusAuditLog::logChange(
@@ -405,16 +464,25 @@ class SubscriptionController extends Controller
             [
                 'old_plan_id' => $oldPlan?->id,
                 'new_plan_id' => $newPlan->id,
+                'old_amount' => $oldAmount,
                 'new_amount' => $newAmount,
+                'licenses_repointed' => $licensesRepointed,
             ]
         );
 
         return redirect()->route('admin.subscriptions.show', $subscription)
-            ->with('status', 'Plan changed to '.$newPlan->name.'.');
+            ->with('status', sprintf(
+                'Plan changed to %s (amount %s).%s',
+                $newPlan->name,
+                number_format($newAmount, 2),
+                $licensesRepointed > 0 ? sprintf(' %d license(s) moved to %s.', $licensesRepointed, $newPlan->product?->name ?? 'the new product') : ''
+            ));
     }
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
     {
+        $this->authorize('update', $subscription);
+
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'plan_id' => ['required', 'exists:plans,id'],
@@ -440,6 +508,14 @@ class SubscriptionController extends Controller
             'area_id' => ['nullable', 'integer'],
         ]);
 
+        // Changing the client here would leave licenses, invoices and projects
+        // behind with the old one and skip the audit trail Move owner keeps.
+        if ((int) $data['customer_id'] !== (int) $subscription->customer_id) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'To change the client, use Move owner on the subscription page.',
+            ]);
+        }
+
         $plan = Plan::findOrFail($data['plan_id']);
 
         if ($plan->isPerFlat()) {
@@ -456,8 +532,10 @@ class SubscriptionController extends Controller
                 $baseAmount
             )
             : null;
+        $previousStatus = (string) $subscription->status;
+        $statusNote = '';
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request, $plan) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $data, $commissionAmount, $request, $plan, $previousStatus, &$statusNote) {
             $subscription->update([
                 'customer_id' => $data['customer_id'],
                 'plan_id' => $data['plan_id'],
@@ -469,8 +547,8 @@ class SubscriptionController extends Controller
                 'current_period_start' => \App\Support\DateTimeFormat::parseDate($data['current_period_start'])?->toDateString(),
                 'current_period_end' => \App\Support\DateTimeFormat::parseDate($data['current_period_end'])?->toDateString(),
                 'next_invoice_at' => \App\Support\DateTimeFormat::parseDate($data['next_invoice_at'])?->toDateString(),
-                'auto_renew' => $request->boolean('auto_renew'),
-                'cancel_at_period_end' => $request->boolean('cancel_at_period_end'),
+                'auto_renew' => $request->boolean('auto_renew', (bool) $subscription->auto_renew),
+                'cancel_at_period_end' => $request->boolean('cancel_at_period_end', (bool) $subscription->cancel_at_period_end),
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -521,18 +599,36 @@ class SubscriptionController extends Controller
                     ->whereKey($data['customer_id'])
                     ->update(['access_override_until' => $overrideDate ? $overrideDate->endOfDay() : null]);
             }
+
+            $statusNote = $this->applyStatusChange($subscription, $previousStatus, $request->user()?->id);
         });
 
+        $message = trim('Subscription updated. '.$statusNote);
+
         if (AjaxResponse::ajaxFromRequest($request)) {
-            return AjaxResponse::ajaxRedirect(route('admin.subscriptions.edit', $subscription), 'Subscription updated.');
+            return AjaxResponse::ajaxRedirect(route('admin.subscriptions.edit', $subscription), $message);
         }
 
         return redirect()->route('admin.subscriptions.edit', $subscription)
-            ->with('status', 'Subscription updated.');
+            ->with('status', $message);
     }
 
     public function destroy(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
     {
+        $this->authorize('delete', $subscription);
+
+        // Deleting cascades to licenses, domains and certificates and strands
+        // the invoices, so only a subscription with no live history may go.
+        $blocker = $this->deletionBlocker($subscription);
+
+        if ($blocker !== null) {
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError($blocker);
+            }
+
+            return redirect()->back()->with('error', $blocker);
+        }
+
         $subscription->delete();
 
         if (AjaxResponse::ajaxFromRequest($request)) {
@@ -544,6 +640,85 @@ class SubscriptionController extends Controller
 
         return redirect()->route('admin.subscriptions.index')
             ->with('status', 'Subscription deleted.');
+    }
+
+    /**
+     * Carry a status set by hand through to the licenses, the way the billing
+     * automation does, so the license list matches what verification enforces.
+     * Returns a note for the admin, or an empty string.
+     */
+    private function applyStatusChange(Subscription $subscription, string $previousStatus, ?int $actorId): string
+    {
+        $newStatus = (string) $subscription->status;
+
+        if ($newStatus === $previousStatus) {
+            return '';
+        }
+
+        \App\Models\StatusAuditLog::logChange(
+            Subscription::class,
+            $subscription->id,
+            $previousStatus,
+            $newStatus,
+            'admin_update',
+            $actorId
+        );
+
+        $lifecycle = app(LicenseLifecycleService::class);
+
+        if ($newStatus === 'cancelled') {
+            $subscription->forceFill([
+                'auto_renew' => false,
+                'cancel_at_period_end' => false,
+                'cancelled_at' => $subscription->cancelled_at ?? now(),
+            ])->save();
+            app(SubscriptionCancellationService::class)->revokeLicenses($subscription);
+
+            return 'Its licenses were revoked.';
+        }
+
+        if ($previousStatus === 'cancelled') {
+            $subscription->forceFill(['cancelled_at' => null])->save();
+
+            return 'Licenses revoked at cancellation stay revoked — reactivate them individually.';
+        }
+
+        if ($newStatus === 'suspended') {
+            $count = $lifecycle->suspendForSubscription($subscription, 'admin_subscription_suspend', $actorId);
+
+            return $count > 0 ? sprintf('%d license(s) suspended.', $count) : '';
+        }
+
+        if ($previousStatus === 'suspended' && $newStatus === 'active') {
+            $count = $lifecycle->restoreAfterAdminActivation($subscription, $actorId);
+
+            return $count > 0 ? sprintf('%d license(s) reactivated.', $count) : '';
+        }
+
+        return '';
+    }
+
+    private function deletionBlocker(Subscription $subscription): ?string
+    {
+        $liveLicenses = $subscription->licenses()->where('status', '!=', 'revoked')->count();
+
+        if ($liveLicenses > 0) {
+            return sprintf(
+                'This subscription still has %d license(s) in use. Cancel it instead, or terminate its licenses first.',
+                $liveLicenses
+            );
+        }
+
+        $invoices = $subscription->invoices()->whereNotIn('status', ['cancelled'])->count();
+
+        if ($invoices > 0) {
+            return sprintf(
+                'This subscription has %d invoice(s) on record. Cancel it instead so its billing history stays linked.',
+                $invoices
+            );
+        }
+
+        return null;
     }
 
     private function indexPayload(Request $request): array
@@ -590,22 +765,8 @@ class SubscriptionController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $accessBlockService = app(AccessBlockService::class);
-        $accessBlockedCustomers = [];
-
-        foreach ($subscriptions as $subscription) {
-            $customer = $subscription->customer;
-            $customerId = $customer?->id;
-            if (! $customerId || array_key_exists($customerId, $accessBlockedCustomers)) {
-                continue;
-            }
-
-            $accessBlockedCustomers[$customerId] = $accessBlockService->isCustomerBlocked($customer);
-        }
-
         return [
             'subscriptions' => $subscriptions,
-            'accessBlockedCustomers' => $accessBlockedCustomers,
             'search' => $search,
         ];
     }
@@ -802,7 +963,7 @@ class SubscriptionController extends Controller
                     'current_period_end' => (string) old('current_period_end', (string) ($subscription?->current_period_end?->format('d-m-Y') ?? '')),
                     'next_invoice_at' => (string) old('next_invoice_at', (string) ($subscription?->next_invoice_at?->format('d-m-Y') ?? '')),
                     'access_override_until' => (string) old('access_override_until', (string) ($subscription?->customer?->access_override_until?->format('d-m-Y') ?? '')),
-                    'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? false)),
+                    'auto_renew' => (bool) old('auto_renew', (bool) ($subscription?->auto_renew ?? true)),
                     'cancel_at_period_end' => (bool) old('cancel_at_period_end', (bool) ($subscription?->cancel_at_period_end ?? false)),
                     'notes' => (string) old('notes', (string) ($subscription?->notes ?? '')),
                 ],

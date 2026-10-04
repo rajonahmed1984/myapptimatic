@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\BillingService;
 use App\Services\InvoicePaymentCompletionService;
+use App\Services\LicenseLifecycleService;
 use App\Services\StatusUpdateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -71,10 +72,17 @@ class LicenseRenewalLifecycleTest extends TestCase
         $subscription->refresh();
         $license->refresh();
 
+        // Not current_period_end: the window has already rolled on to the
+        // next, unpaid, term by the time an invoice is settled.
+        $paidThrough = Invoice::query()
+            ->where('subscription_id', $subscription->id)
+            ->where('status', 'paid')
+            ->max('period_end');
+
         $this->assertSame(
-            $subscription->current_period_end->toDateString(),
+            Carbon::parse($paidThrough)->addDays(LicenseLifecycleService::DEFAULT_EXPIRY_GRACE_DAYS)->toDateString(),
             $license->expires_at->toDateString(),
-            'License expiry must track the period the customer has paid for.'
+            'License expiry must track the period the customer has paid for, plus grace.'
         );
 
         // The nightly sweep must now leave it alone.

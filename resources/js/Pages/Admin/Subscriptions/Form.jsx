@@ -427,13 +427,18 @@ export default function Form({
                     <div className="grid gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
+                            {is_edit ? <input type="hidden" name="customer_id" value={String(fields?.customer_id || '')} /> : null}
                             <select
-                                name="customer_id"
+                                name={is_edit ? undefined : 'customer_id'}
                                 defaultValue={String(fields?.customer_id || '')}
+                                disabled={is_edit}
                                 className={`${selectTokenClass} mt-2`}
                             >
                                 {customerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
+                            {is_edit ? (
+                                <p className="mt-1 text-xs text-slate-500">To change the client, use Move owner on the subscription page.</p>
+                            ) : null}
                             {errors?.customer_id ? <p className="mt-1 text-xs text-rose-600">{errors.customer_id}</p> : null}
                         </div>
                         <div>

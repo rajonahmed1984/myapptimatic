@@ -36,7 +36,10 @@ class AdminLicenseSyncTest extends TestCase
                 'ok' => true,
             ]);
 
-        $this->assertNotNull($license->fresh()->last_check_at);
+        // A server-side check is recorded separately; last_check_at only
+        // moves when the installation itself calls the verify API.
+        $this->assertNotNull($license->fresh()->last_server_check_at);
+        $this->assertNull($license->fresh()->last_check_at);
     }
 
     #[Test]
@@ -110,7 +113,10 @@ class AdminLicenseSyncTest extends TestCase
                 ],
             ]);
 
-        $this->assertNotNull($license->fresh()->last_verified_at);
+        // The server check passed, but last_verified_at records the
+        // installation verifying itself, so a server check leaves it alone.
+        $this->assertNotNull($license->fresh()->last_server_check_at);
+        $this->assertNull($license->fresh()->last_verified_at);
     }
 
     private function makeLicense(array $overrides = []): License

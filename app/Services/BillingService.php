@@ -74,6 +74,8 @@ class BillingService
             'status' => 'unpaid',
             'issue_date' => $issueDate->toDateString(),
             'due_date' => $dueDate->toDateString(),
+            'period_start' => $periodStart->toDateString(),
+            'period_end' => $periodEnd->toDateString(),
             'subtotal' => $subtotal,
             'tax_rate_percent' => $taxData['tax_rate_percent'],
             'tax_mode' => $taxData['tax_mode'],
@@ -243,7 +245,10 @@ class BillingService
         return [$periodStart, $periodEnd];
     }
 
-    private function nextInvoiceAt(Carbon $periodStart, Carbon $periodEnd, Carbon $today, string $interval): Carbon
+    /**
+     * When the invoice for the period starting at $periodStart should be raised.
+     */
+    public function nextInvoiceAt(Carbon $periodStart, Carbon $periodEnd, Carbon $today, string $interval): Carbon
     {
         if ($periodStart->day === 1) {
             return $periodStart->copy();
@@ -253,13 +258,15 @@ class BillingService
             return $periodStart->copy();
         }
 
+        // Bill ahead of the period starting, not ahead of it ending — keying
+        // this on the end pushed every non-monthly renewal a full term late.
         $invoiceGenerationDays = (int) Setting::getValue('invoice_generation_days');
         $nextInvoiceAt = $invoiceGenerationDays > 0
-            ? $periodEnd->copy()->subDays($invoiceGenerationDays)
-            : $periodEnd->copy();
+            ? $periodStart->copy()->subDays($invoiceGenerationDays)
+            : $periodStart->copy();
 
         if ($nextInvoiceAt->lessThan($today)) {
-            $nextInvoiceAt = $periodEnd->copy();
+            $nextInvoiceAt = $periodStart->copy();
         }
 
         return $nextInvoiceAt;

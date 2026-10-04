@@ -12,6 +12,7 @@ use App\Models\ProjectTaskSubtask;
 use App\Models\License;
 use App\Models\MailAccount;
 use App\Models\OwnershipTransfer;
+use App\Models\Subscription;
 use App\Policies\OwnershipTransferPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\LeaveRequestPolicy;
@@ -21,6 +22,7 @@ use App\Policies\ProjectPolicy;
 use App\Policies\ProjectTaskPolicy;
 use App\Policies\ProjectTaskSubtaskPolicy;
 use App\Policies\LicensePolicy;
+use App\Policies\SubscriptionPolicy;
 use App\Policies\MailAccountPolicy;
 use App\Policies\DocumentPolicy;
 use App\Enums\Role;
@@ -39,6 +41,7 @@ class AuthServiceProvider extends ServiceProvider
         ProjectTask::class => ProjectTaskPolicy::class,
         ProjectTaskSubtask::class => ProjectTaskSubtaskPolicy::class,
         License::class => LicensePolicy::class,
+        Subscription::class => SubscriptionPolicy::class,
         MailAccount::class => MailAccountPolicy::class,
         OwnershipTransfer::class => OwnershipTransferPolicy::class,
     ];

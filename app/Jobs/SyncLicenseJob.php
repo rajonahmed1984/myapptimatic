@@ -30,6 +30,6 @@ class SyncLicenseJob implements ShouldQueue
             return;
         }
 
-        $licenseRealtimeCheckService->sync($license, $this->ipAddress);
+        $licenseRealtimeCheckService->sync($license);
     }
 }

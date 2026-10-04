@@ -8,6 +8,7 @@ use App\Models\LicenseDomain;
 use App\Models\Setting;
 use App\Models\Subscription;
 use App\Services\AccessBlockService;
+use App\Services\LicenseLifecycleService;
 use App\Services\LicenseRealtimeCheckService;
 use App\Support\PaginationPayload;
 use Carbon\Carbon;
@@ -30,6 +31,8 @@ class LicenseController extends Controller
 
     public function index(Request $request): InertiaResponse
     {
+        $this->authorize('viewAny', License::class);
+
         $search = trim((string) $request->input('search', ''));
 
         $licenses = License::query()
@@ -68,22 +71,13 @@ class LicenseController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $accessBlockedCustomers = [];
+        // One invoice query for the whole page instead of one per subscription.
+        $accessBlockedCustomers = $this->accessBlockService->strictBlockMapForSubscriptions(
+            collect($licenses->items())->pluck('subscription')
+        );
         $realtimeChecks = [];
 
         foreach ($licenses as $license) {
-            $customer = $license->subscription?->customer;
-            $customerId = $customer?->id;
-            $scopeKey = $customerId ? ($customerId.':'.(string) ($license->subscription_id ?? 0)) : null;
-
-            if ($scopeKey && ! array_key_exists($scopeKey, $accessBlockedCustomers)) {
-                $accessBlockedCustomers[$scopeKey] = $this->accessBlockService->isCustomerBlocked(
-                    $customer,
-                    true,
-                    $license->subscription_id
-                );
-            }
-
             $realtimeChecks[$license->id] = $this->licenseRealtimeCheckService->evaluate($license, $accessBlockedCustomers);
         }
 
@@ -164,6 +158,12 @@ class LicenseController extends Controller
 
         $data = $this->validatedLicenseData($request, true, $license);
 
+        // Moving to another subscription goes through move(), which checks the
+        // target, re-points the product and records the ownership change.
+        if ((int) $data['subscription_id'] !== (int) $license->subscription_id) {
+            return $this->backWithLicenseFormError($request, 'subscription_id', 'Use Move license to put this license on another subscription.');
+        }
+
         $data['max_domains'] = 1;
 
         $domainInput = $this->extractSingleDomain($data['allowed_domains'] ?? null);
@@ -182,7 +182,9 @@ class LicenseController extends Controller
             return $this->backWithLicenseFormError($request, 'allowed_domains', 'Invalid domain format. Use only the hostname or full URL.');
         }
 
+        $previousStatus = (string) $license->status;
         $license->update($data);
+        $this->auditStatusChange($request, $license, $previousStatus);
 
         LicenseDomain::updateOrCreate(
             [
@@ -226,7 +228,9 @@ class LicenseController extends Controller
         }
 
         if ((string) $license->status !== 'suspended') {
+            $previousStatus = (string) $license->status;
             $license->update(['status' => 'suspended']);
+            $this->auditStatusChange($request, $license, $previousStatus);
         }
 
         return $this->redirectAfterLicenseAction($request, $license, 'License suspended.');
@@ -241,10 +245,12 @@ class LicenseController extends Controller
         }
 
         if (in_array((string) $license->status, ['suspended', 'expired'], true)) {
+            $previousStatus = (string) $license->status;
             $license->update(['status' => 'active']);
+            $this->auditStatusChange($request, $license, $previousStatus);
         }
 
-        return $this->redirectAfterLicenseAction($request, $license, 'License unsuspended.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License unsuspended.'.$this->resuspensionWarning($license));
     }
 
     public function reactivate(Request $request, License $license)
@@ -252,10 +258,12 @@ class LicenseController extends Controller
         $this->authorize('update', $license);
 
         if (in_array((string) $license->status, ['revoked', 'expired'], true)) {
+            $previousStatus = (string) $license->status;
             $license->update(['status' => 'active']);
+            $this->auditStatusChange($request, $license, $previousStatus);
         }
 
-        return $this->redirectAfterLicenseAction($request, $license, 'License reactivated.');
+        return $this->redirectAfterLicenseAction($request, $license, 'License reactivated.'.$this->resuspensionWarning($license));
     }
 
     /**
@@ -309,7 +317,9 @@ class LicenseController extends Controller
         $this->authorize('update', $license);
 
         if ((string) $license->status !== 'revoked') {
+            $previousStatus = (string) $license->status;
             $license->update(['status' => 'revoked']);
+            $this->auditStatusChange($request, $license, $previousStatus);
         }
 
         return $this->redirectAfterLicenseAction($request, $license, 'License terminated.');
@@ -330,7 +340,7 @@ class LicenseController extends Controller
         $this->authorize('update', $license);
 
         $license->load(['subscription.customer', 'domains']);
-        $check = $this->licenseRealtimeCheckService->sync($license, request()->ip());
+        $check = $this->licenseRealtimeCheckService->sync($license);
         $message = $check['is_verified']
             ? 'License sync completed: verified.'
             : 'License sync completed: '.(string) ($check['reason'] ?? 'unverified').'.';
@@ -423,36 +433,81 @@ class LicenseController extends Controller
         $this->authorize('view', $license);
 
         $syncAt = $license->last_check_at;
-        $syncLabel = 'Never';
-        $syncClass = 'bg-slate-100 text-slate-600';
-
-        if ($syncAt) {
-            $hours = $syncAt->diffInHours(now());
-            if ($hours <= 24) {
-                $syncLabel = 'Synced';
-                $syncClass = 'bg-emerald-100 text-emerald-700';
-            } elseif ($hours > 48) {
-                $syncLabel = 'Stale';
-                $syncClass = 'bg-amber-100 text-amber-700';
-            } else {
-                $syncLabel = 'Synced';
-                $syncClass = 'bg-emerald-100 text-emerald-700';
-            }
-        }
-
-        $dateFormat = Setting::getValue('date_format', config('app.date_format', 'd-m-Y'));
-        $displayAt = $syncAt ? $syncAt->format(config('app.datetime_format', 'd-m-Y h:i A')) : 'No sync yet';
+        [$syncLabel, $syncClass] = $this->syncBadge($syncAt);
 
         return response()->json([
             'ok' => true,
             'data' => [
                 'last_check_at' => $syncAt?->toDateTimeString(),
                 'last_check_ip' => $license->last_check_ip,
+                'last_server_check_at' => $license->last_server_check_at?->toDateTimeString(),
                 'sync_label' => $syncLabel,
                 'sync_class' => $syncClass,
-                'display_time' => $displayAt,
+                'display_time' => $syncAt ? $syncAt->format(config('app.datetime_format', 'd-m-Y h:i A')) : 'No sync yet',
             ],
         ]);
+    }
+
+    /**
+     * Record an admin's status change. A suspension made here is an admin hold
+     * that payments and subscription re-activation leave in place.
+     */
+    private function auditStatusChange(Request $request, License $license, string $previousStatus): void
+    {
+        $newStatus = (string) $license->status;
+
+        if ($newStatus === $previousStatus) {
+            return;
+        }
+
+        \App\Models\StatusAuditLog::logChange(
+            License::class,
+            $license->id,
+            $previousStatus,
+            $newStatus,
+            $newStatus === 'suspended' ? LicenseLifecycleService::ADMIN_HOLD_REASON : 'admin_'.$newStatus,
+            $request->user()?->id
+        );
+    }
+
+    /**
+     * The nightly run suspends licenses on subscriptions with a past-due
+     * balance, so a manual reactivation would quietly not stick.
+     */
+    private function resuspensionWarning(License $license): string
+    {
+        $license->loadMissing('subscription');
+        $subscription = $license->subscription;
+
+        if (! $subscription || (string) $license->status !== 'active') {
+            return '';
+        }
+
+        $overrideActive = $license->auto_suspend_override_until
+            && $license->auto_suspend_override_until->endOfDay()->isFuture();
+
+        if ($overrideActive || ! app(LicenseLifecycleService::class)->hasOutstandingBalance($subscription)) {
+            return '';
+        }
+
+        return ' The subscription still has an unpaid balance, so automation will suspend it again unless you set an auto-suspend override date.';
+    }
+
+    /**
+     * How recently the installation itself called the verify API. 48 hours
+     * matches the window the header's license health count uses.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function syncBadge(?Carbon $lastCheckAt): array
+    {
+        if (! $lastCheckAt) {
+            return ['Never', 'bg-slate-100 text-slate-600'];
+        }
+
+        return $lastCheckAt->greaterThanOrEqualTo(now()->subHours(48))
+            ? ['Synced', 'bg-emerald-100 text-emerald-700']
+            : ['Stale', 'bg-amber-100 text-amber-700'];
     }
 
     private function extractSingleDomain(?string $input): string|bool|null
@@ -501,22 +556,7 @@ class LicenseController extends Controller
                 $verificationHint = (string) ($check['verification_hint'] ?? 'Active and domain matched');
 
                 $syncAt = $license->last_check_at;
-                $syncLabel = 'Never';
-                $syncClass = 'bg-slate-100 text-slate-600';
-
-                if ($syncAt) {
-                    $hours = $syncAt->diffInHours(now());
-                    if ($hours <= 24) {
-                        $syncLabel = 'Synced';
-                        $syncClass = 'bg-emerald-100 text-emerald-700';
-                    } elseif ($hours > 48) {
-                        $syncLabel = 'Stale';
-                        $syncClass = 'bg-amber-100 text-amber-700';
-                    } else {
-                        $syncLabel = 'Synced';
-                        $syncClass = 'bg-emerald-100 text-emerald-700';
-                    }
-                }
+                [$syncLabel, $syncClass] = $this->syncBadge($syncAt);
 
                 $latestOrder = $subscription?->latestOrder;
                 $orderNumber = $latestOrder?->order_number ?? $latestOrder?->id;

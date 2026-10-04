@@ -335,6 +335,8 @@ class OrderController extends Controller
                 'status' => 'unpaid',
                 'issue_date' => $issueDate->toDateString(),
                 'due_date' => $dueDate->toDateString(),
+                'period_start' => $startDate->toDateString(),
+                'period_end' => $periodEnd->toDateString(),
                 'subtotal' => $subtotal,
                 'tax_rate_percent' => $taxData['tax_rate_percent'],
                 'tax_mode' => $taxData['tax_mode'],

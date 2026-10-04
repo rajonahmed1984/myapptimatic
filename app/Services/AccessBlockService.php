@@ -81,6 +81,67 @@ class AccessBlockService
         return $this->invoiceBlockStatus($customer, $strictLicenseOverdue, $subscriptionId)['blocked'];
     }
 
+    /**
+     * isCustomerBlocked($customer, true, $subscriptionId) for many
+     * subscriptions with one invoice query, for list pages.
+     *
+     * @param  iterable<\App\Models\Subscription|null>  $subscriptions  with `customer` loaded
+     * @return array<string, bool> keyed "customerId:subscriptionId"
+     */
+    public function strictBlockMapForSubscriptions(iterable $subscriptions): array
+    {
+        $subscriptions = collect($subscriptions)
+            ->filter(fn ($subscription) => $subscription && $subscription->customer)
+            ->unique('id')
+            ->values();
+
+        if ($subscriptions->isEmpty()) {
+            return [];
+        }
+
+        $graceDays = (int) Setting::getValue('grace_period_days');
+        $openInvoices = Invoice::query()
+            ->whereIn('subscription_id', $subscriptions->pluck('id'))
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('subscription_id');
+
+        $map = [];
+
+        foreach ($subscriptions as $subscription) {
+            $customer = $subscription->customer;
+            $key = $customer->id.':'.$subscription->id;
+
+            if ((string) $customer->status !== 'active') {
+                $map[$key] = true;
+                continue;
+            }
+
+            // Same pick as invoiceBlockStatus(): the earliest overdue invoice,
+            // else the earliest open one, on this customer and subscription.
+            $candidates = collect($openInvoices->get($subscription->id, []))
+                ->where('customer_id', $customer->id);
+            $invoice = $candidates->firstWhere('status', 'overdue') ?? $candidates->first();
+
+            if (! $invoice) {
+                $map[$key] = false;
+                continue;
+            }
+
+            $blocked = $this->buildStatus($invoice, $graceDays, true)['blocked'];
+
+            if ($customer->access_override_until && $customer->access_override_until->isFuture()) {
+                $blocked = false;
+            }
+
+            $map[$key] = $blocked;
+        }
+
+        return $map;
+    }
+
     private function buildStatus(Invoice $invoice, int $graceDays, bool $strictLicenseOverdue): array
     {
         $now = Carbon::now();

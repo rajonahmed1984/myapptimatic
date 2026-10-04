@@ -7,6 +7,11 @@ use App\Models\User;
 
 class LicensePolicy
 {
+    public function viewAny($actor): bool
+    {
+        return $actor instanceof User && $actor->isAdmin();
+    }
+
     public function view($actor, License $license): bool
     {
         if ($actor instanceof User) {

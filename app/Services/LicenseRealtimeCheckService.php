@@ -92,20 +92,19 @@ class LicenseRealtimeCheckService
         return Carbon::now()->lessThanOrEqualTo($until->copy()->endOfDay());
     }
 
-    public function sync(License $license, ?string $ipAddress = null, array $accessBlockedCustomers = []): array
+    /**
+     * Re-evaluate a license on the server and record when that happened.
+     *
+     * last_check_at, last_check_ip and last_verified_at belong to the
+     * installation calling the verify API; a server-side check must not touch
+     * them, or a license whose app never calls in still reads as "Synced" and
+     * the IP-change check loses the address it compares against.
+     */
+    public function sync(License $license, array $accessBlockedCustomers = []): array
     {
         $result = $this->evaluate($license, $accessBlockedCustomers);
 
-        $updates = [
-            'last_check_at' => now(),
-            'last_check_ip' => $ipAddress,
-        ];
-
-        if ($result['is_verified']) {
-            $updates['last_verified_at'] = now();
-        }
-
-        $license->update($updates);
+        $license->forceFill(['last_server_check_at' => now()])->saveQuietly();
 
         return $result;
     }

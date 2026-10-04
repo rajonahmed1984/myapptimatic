@@ -19,6 +19,8 @@ class Invoice extends Model
         'status',
         'issue_date',
         'due_date',
+        'period_start',
+        'period_end',
         'paid_at',
         'overdue_at',
         'reminder_sent_at',
@@ -44,6 +46,8 @@ class Invoice extends Model
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
+        'period_start' => 'date',
+        'period_end' => 'date',
         'paid_at' => 'datetime',
         'overdue_at' => 'datetime',
         'reminder_sent_at' => 'datetime',

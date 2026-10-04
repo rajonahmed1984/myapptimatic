@@ -33,17 +33,18 @@ class SuspendPastDueLicenses extends Command
     public function handle(): int
     {
         $today = Carbon::today()->toDateString();
-        $threeDaysAgo = Carbon::today()->subDays(3)->toDateString();
 
         $this->info("Running license auto-suspension check...");
 
-        // Condition 1: still-active licenses whose own expiry grace has run out.
-        // billing:run marks lapsed licenses `expired` the day after expiry; this
+        // Condition 1: still-active licenses past their expiry date. The grace
+        // period is already part of expires_at (LicenseLifecycleService adds it
+        // when a payment extends the license), so this uses the same cut-off as
+        // billing:run, which marks lapsed licenses `expired` the day after; it
         // catches anything that slipped past it (e.g. billing:run not running).
         $licensesByExpiry = $this->option('invoice-only') ? collect() : License::query()
             ->where('status', 'active')
             ->whereNotNull('expires_at')
-            ->where('expires_at', '<=', $threeDaysAgo)
+            ->whereDate('expires_at', '<', $today)
             ->where(function ($query) use ($today) {
                 $query->whereNull('auto_suspend_override_until')
                       ->orWhere('auto_suspend_override_until', '<', $today);
