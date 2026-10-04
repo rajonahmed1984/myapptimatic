@@ -15,10 +15,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\CompletesLoginOtp;
 use Tests\TestCase;
 
 class NoBreakSmokeTest extends TestCase
 {
+    use CompletesLoginOtp;
     use RefreshDatabase;
 
     #[Test]
@@ -42,18 +44,18 @@ class NoBreakSmokeTest extends TestCase
         ]);
 
         $cases = [
-            [$client, 'login.attempt', 'client.dashboard', 'web', 'login'],
-            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin.login'],
-            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee.login'],
-            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'sales.login'],
-            [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support.login'],
+            [$client, 'login.attempt', 'client.dashboard', 'web', 'login', 'web'],
+            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin.login', 'admin'],
+            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee.login', 'employee'],
+            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'sales.login', 'sales'],
+            [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support.login', 'support'],
         ];
 
-        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard, $loginRoute]) {
-            $loginResponse = $this->post(route($attemptRoute), [
+        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard, $loginRoute, $portal]) {
+            $loginResponse = $this->completeLoginOtpIfRequired($this->post(route($attemptRoute), [
                 'email' => $user->email,
                 'password' => 'secret-pass',
-            ]);
+            ]), $user, $portal);
 
             $loginResponse->assertRedirect(route($targetRoute, [], false));
             $this->assertAuthenticatedAs($user, $guard);

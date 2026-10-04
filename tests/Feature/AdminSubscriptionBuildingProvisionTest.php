@@ -390,7 +390,12 @@ class AdminSubscriptionBuildingProvisionTest extends TestCase
             ], 200),
         ]);
 
-        config(['mybuilding.provision_secret' => 'test-secret-key']);
+        // Every building is created on the one hosted installation; the
+        // licence URL is the customer's own site and is never the target.
+        config([
+            'mybuilding.provision_secret' => 'test-secret-key',
+            'mybuilding.default_install_url' => 'https://app.mybuilding.com',
+        ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::create(['name' => 'MyBuilding', 'slug' => 'mybuilding', 'is_active' => true]);
@@ -491,7 +496,10 @@ class AdminSubscriptionBuildingProvisionTest extends TestCase
             ], 200),
         ]);
 
-        config(['mybuilding.provision_secret' => 'test-secret-key']);
+        config([
+            'mybuilding.provision_secret' => 'test-secret-key',
+            'mybuilding.default_install_url' => 'https://demo.mybuilding.com',
+        ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::create(['name' => 'MyBuilding', 'slug' => 'mybuilding', 'is_active' => true]);
@@ -508,6 +516,8 @@ class AdminSubscriptionBuildingProvisionTest extends TestCase
             'name' => 'Auto Provision Customer',
             'company_name' => 'Crescent Plaza',
             'email' => 'crescent@example.com',
+            // The installation needs an owner phone to create the account.
+            'phone' => '01722222222',
             'status' => 'active',
         ]);
 
@@ -553,5 +563,78 @@ class AdminSubscriptionBuildingProvisionTest extends TestCase
         $this->assertEquals(MyBuildingProvision::STATUS_PROVISIONED, $provision->status);
         $this->assertEquals(120, $provision->remote_building_id);
         $this->assertEquals('REG-AUTO-CREATED', $provision->registration_code);
+    }
+
+    public function test_a_failed_provision_still_accepts_the_order_with_a_warning(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+
+        config([
+            'mybuilding.provision_secret' => 'test-secret-key',
+            'mybuilding.default_install_url' => 'https://demo.mybuilding.com',
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::create(['name' => 'MyBuilding', 'slug' => 'mybuilding', 'is_active' => true]);
+        $plan = Plan::create([
+            'product_id' => $product->id,
+            'name' => 'Building & Flat-wise Plan 3',
+            'slug' => 'building-flat-wise-3',
+            'interval' => 'monthly',
+            'price' => 50.00,
+            'pricing_model' => 'per_flat',
+            'is_active' => true,
+        ]);
+        // No phone on the profile, so the installation call cannot be made.
+        $customer = Customer::create([
+            'name' => 'No Phone Customer',
+            'email' => 'nophone@example.com',
+            'status' => 'active',
+        ]);
+
+        $subscription = Subscription::create([
+            'customer_id' => $customer->id,
+            'plan_id' => $plan->id,
+            'subscription_amount' => 2000.00,
+            'status' => 'pending',
+            'start_date' => now()->toDateString(),
+            'current_period_start' => now()->toDateString(),
+            'current_period_end' => now()->addMonth()->toDateString(),
+            'next_invoice_at' => now()->addMonth()->toDateString(),
+        ]);
+
+        $license = License::create([
+            'subscription_id' => $subscription->id,
+            'product_id' => $product->id,
+            'license_key' => 'NOPHONEKEY12345678901234567890',
+            'status' => 'pending',
+            'starts_at' => now(),
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $order = \App\Models\Order::create([
+            'order_number' => \App\Models\Order::nextNumber(),
+            'customer_id' => $customer->id,
+            'product_id' => $product->id,
+            'plan_id' => $plan->id,
+            'subscription_id' => $subscription->id,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.orders.approve', $order), [
+            'license_key' => 'NOPHONEKEY12345678901234567890',
+            'license_url' => 'https://nophone.example.com',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('status', 'Order accepted.');
+        $response->assertSessionHasErrors('provision');
+        $this->assertEquals('accepted', $order->fresh()->status);
+        $this->assertEquals('active', $subscription->fresh()->status);
+
+        $provision = MyBuildingProvision::where('license_id', $license->id)->first();
+        $this->assertNotNull($provision);
+        $this->assertFalse($provision->isProvisioned());
+        \Illuminate\Support\Facades\Http::assertNothingSent();
     }
 }

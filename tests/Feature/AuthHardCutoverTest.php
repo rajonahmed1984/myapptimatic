@@ -8,10 +8,12 @@ use App\Models\SalesRepresentative;
 use App\Services\AuthFresh\LoginService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CompletesLoginOtp;
 use Tests\TestCase;
 
 class AuthHardCutoverTest extends TestCase
 {
+    use CompletesLoginOtp;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -75,18 +77,18 @@ class AuthHardCutoverTest extends TestCase
         ]);
 
         $cases = [
-            [$client, 'login.attempt', 'client.dashboard', 'web'],
-            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web'],
-            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee'],
-            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales'],
-            [$support, 'support.login.attempt', 'support.dashboard', 'support'],
+            [$client, 'login.attempt', 'client.dashboard', 'web', 'web'],
+            [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin'],
+            [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee'],
+            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'sales'],
+            [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support'],
         ];
 
-        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard]) {
-            $response = $this->post(route($attemptRoute), [
+        foreach ($cases as [$user, $attemptRoute, $targetRoute, $guard, $portal]) {
+            $response = $this->completeLoginOtpIfRequired($this->post(route($attemptRoute), [
                 'email' => $user->email,
                 'password' => 'secret-pass',
-            ]);
+            ]), $user, $portal);
 
             $response->assertRedirect(route($targetRoute, [], false));
             $this->assertAuthenticatedAs($user, $guard);

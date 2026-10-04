@@ -123,14 +123,15 @@ class UserDocumentDisplayTest extends TestCase
                 ->values()
                 ->all();
 
-            $expectedPath = Storage::disk('public')->url($path);
-            $this->assertTrue(
-                collect($avatarUrls)->contains(fn ($url) => is_string($url) && str_contains($url, $expectedPath)),
-                'Expected at least one customer avatar URL to contain: '.$expectedPath
-            );
+            // Avatars are served through the media route, not /storage.
+            $expectedPath = '/media/avatars/customers/'.$customer->id.'/avatar.png';
+            $avatarUrl = collect($avatarUrls)->first(fn ($url) => is_string($url) && str_contains($url, $expectedPath));
+            $this->assertNotNull($avatarUrl, 'Expected at least one customer avatar URL to contain: '.$expectedPath);
+
+            $this->get($avatarUrl)->assertOk();
             return;
         }
 
-        $response->assertSee(Storage::disk('public')->url($path));
+        $response->assertSee('/media/avatars/customers/'.$customer->id.'/avatar.png');
     }
 }

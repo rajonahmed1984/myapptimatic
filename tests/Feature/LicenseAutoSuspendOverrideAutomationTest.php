@@ -67,6 +67,9 @@ class LicenseAutoSuspendOverrideAutomationTest extends TestCase
     #[Test]
     public function automation_skips_auto_suspending_licenses_with_active_override_date(): void
     {
+        // Pinned past the 5th: before it, invoice grace stops all suspension
+        // and this test failed on the first four days of every month.
+        Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00', 'Asia/Dhaka'));
         Setting::setValue('enable_suspension', 1);
         Setting::setValue('suspend_days', 0);
 

@@ -268,8 +268,15 @@ class OrderController extends Controller
         $provisioned = $provisioner->provision($provision);
 
         if (! $provisioned) {
-            // Queue retry as a fallback if immediate remote call failed
-            ProvisionMyBuildingJob::dispatch($provision->id);
+            // Queue retry as a fallback if immediate remote call failed. On a
+            // sync queue the job runs inline and throws when it fails again;
+            // that must not turn an accepted order into an error page or stop
+            // the acceptance notifications that follow.
+            try {
+                ProvisionMyBuildingJob::dispatch($provision->id);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
 
             return 'Order accepted, but building provisioning could not be completed immediately: '
                 .($provision->fresh()->last_error ?? 'Remote server error')

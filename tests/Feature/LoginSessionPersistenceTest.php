@@ -8,10 +8,12 @@ use App\Models\SalesRepresentative;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\CompletesLoginOtp;
 use Tests\TestCase;
 
 class LoginSessionPersistenceTest extends TestCase
 {
+    use CompletesLoginOtp;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -112,10 +114,10 @@ class LoginSessionPersistenceTest extends TestCase
             'password' => Hash::make('password123'),
         ]);
 
-        $response = $this->post(route('admin.login.attempt'), [
+        $response = $this->completeLoginOtpIfRequired($this->post(route('admin.login.attempt'), [
             'email' => $user->email,
             'password' => 'password123',
-        ]);
+        ]), $user, 'admin');
 
         $response->assertRedirect(route('admin.dashboard'));
         $response->assertCookie(config('session.cookie'));
