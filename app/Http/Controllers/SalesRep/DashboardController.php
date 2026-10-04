@@ -5,7 +5,6 @@ namespace App\Http\Controllers\SalesRep;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionEarning;
 use App\Models\CommissionPayout;
-use App\Services\CommissionService;
 use App\Services\TaskQueryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,10 +13,9 @@ use Inertia\Response as InertiaResponse;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, CommissionService $commissionService, TaskQueryService $taskQueryService): InertiaResponse
+    public function __invoke(Request $request, TaskQueryService $taskQueryService): InertiaResponse
     {
         $rep = $request->attributes->get('salesRep');
-        $balance = $commissionService->computeRepBalance($rep->id);
 
         $startOfMonth = Carbon::now()->startOfMonth();
 
@@ -69,13 +67,13 @@ class DashboardController extends Controller
                 'name' => $rep->name,
                 'email' => $rep->email,
             ],
+            'statement' => app(\App\Services\SalesRepStatementService::class)->forRep($rep->id),
             'referral' => [
                 'code' => (string) $rep->referral_code,
                 'url' => $rep->referral_code ? $rep->referralUrl() : null,
                 'customers_count' => $rep->referredCustomers()->count(),
             ],
             'currency' => $currency,
-            'balance' => $balance,
             'earned_this_month' => (float) $earnedThisMonth,
             'paid_this_month' => (float) $paidThisMonth,
             'project_count' => $projectCount,

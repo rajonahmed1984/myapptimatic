@@ -37,6 +37,7 @@ class EarningController extends Controller
             ->get();
 
         return Inertia::render('Rep/Earnings/Index', [
+            'statement' => app(\App\Services\SalesRepStatementService::class)->forRep($rep->id),
             'earnings' => $earnings->getCollection()->map(function (CommissionEarning $earning) {
                 return [
                     'id' => $earning->id,

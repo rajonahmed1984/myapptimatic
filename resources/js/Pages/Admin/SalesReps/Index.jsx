@@ -4,6 +4,7 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { BalanceBadge, taka } from '../../../Components/Commission/CommissionStatement';
 
 const statusBadgeClass = (status) => {
     if (status === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
@@ -107,9 +108,39 @@ export default function Index({
                             ),
                         },
                         { key: 'login', header: 'Login', cellClassName: 'text-[11px] text-slate-400', render: (rep) => `Last login: ${rep.last_login_label}` },
-                        { key: 'total_earned', header: 'Total earned', headerClassName: 'text-right', cellClassName: 'text-right font-semibold', render: (rep) => rep.total_earned },
-                        { key: 'payable', header: 'Payable (Net)', headerClassName: 'text-right', cellClassName: 'text-right', render: (rep) => rep.total_payable },
-                        { key: 'paid', header: 'Paid (Incl. Advance)', headerClassName: 'text-right', cellClassName: 'text-right', render: (rep) => rep.total_paid },
+                        {
+                            key: 'earned',
+                            header: 'Earned (client paid)',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (rep) => (
+                                <>
+                                    <div className="font-semibold tabular-nums text-slate-900">{taka(rep.statement?.commission_earned)}</div>
+                                    <div className="text-[11px] text-slate-500">of {taka(rep.statement?.commission_total)}</div>
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'received',
+                            header: 'Received',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (rep) => (
+                                <>
+                                    <div className="tabular-nums text-slate-800">{taka(rep.statement?.taken_net)}</div>
+                                    {Number(rep.statement?.retained || 0) > 0 ? (
+                                        <div className="text-[11px] text-amber-700">{taka(rep.statement.retained)} kept from collections</div>
+                                    ) : null}
+                                </>
+                            ),
+                        },
+                        {
+                            key: 'balance',
+                            header: 'Balance',
+                            headerClassName: 'text-right',
+                            cellClassName: 'text-right',
+                            render: (rep) => <BalanceBadge balance={rep.statement?.balance} />,
+                        },
                         {
                             key: 'status',
                             header: 'Status',
@@ -128,13 +159,14 @@ export default function Index({
                             badge={rep.status_label}
                             badgeColor={statusBadgeClass(rep.status)}
                             metrics={[
-                                { label: 'Total Earned', value: rep.total_earned },
-                                { label: 'Payable', value: rep.total_payable },
+                                { label: 'Earned (client paid)', value: taka(rep.statement?.commission_earned) },
+                                { label: 'Received', value: taka(rep.statement?.taken_net) },
                             ]}
                         >
                             <div className="text-xs text-slate-500">
                                 Projects: {rep.projects_count} · Maintenance: {rep.maintenances_count} · Services: {rep.active_subscriptions_count}/{rep.subscriptions_count} · Referred: {rep.referred_customers_count}
                             </div>
+                            <div className="mt-2"><BalanceBadge balance={rep.statement?.balance} /></div>
                             <ApproveButton href={rep.routes?.approve} csrf={csrf} />
                         </MobileCard>
                     )}

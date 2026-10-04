@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\UserSession;
 use App\Services\CommissionService;
 use App\Services\SalesRepNotificationService;
+use App\Services\SalesRepStatementService;
 use App\Support\AjaxResponse;
 use App\Support\PaginationPayload;
 use App\Support\PublicStorageUrl;
@@ -74,26 +75,18 @@ class SalesRepresentativeController extends Controller
 
         $commissionService->ensureProjectEarningsForRepIds($reps->pluck('id')->all());
 
-        $totals = $reps->mapWithKeys(function (SalesRepresentative $rep) use ($commissionService): array {
-            $row = $commissionService->computeRepBalance($rep->id);
-
-            return [
-                $rep->id => (object) [
-                    'total_earned' => (float) ($row['total_earned'] ?? 0),
-                    'total_payable' => (float) ($row['payable_balance'] ?? 0),
-                    'total_paid' => (float) ($row['total_paid'] ?? 0),
-                ],
-            ];
-        });
-
         $loginStatuses = $this->resolveRepLoginStatuses($reps);
+        $statementService = app(SalesRepStatementService::class);
+        $statements = $reps->getCollection()->mapWithKeys(fn (SalesRepresentative $rep) => [
+            $rep->id => $statementService->forRep($rep->id),
+        ])->all();
 
         return Inertia::render('Admin/SalesReps/Index', [
             'pageTitle' => 'Sales Representatives',
             'filters' => [
                 'search' => $search,
             ],
-            'reps' => $this->serializeRepIndexRows($reps->getCollection(), $totals, $loginStatuses),
+            'reps' => $this->serializeRepIndexRows($reps->getCollection(), $loginStatuses, $statements),
             'pagination' => PaginationPayload::make($reps),
             'routes' => [
                 'index' => route('admin.sales-reps.index'),
@@ -709,6 +702,7 @@ class SalesRepresentativeController extends Controller
                     ? route('admin.user-documents.show', ['type' => 'sales-rep', 'id' => $salesRep->id, 'doc' => 'cv'], false)
                     : null,
             ],
+            'statement' => app(SalesRepStatementService::class)->forRep($salesRep->id),
             'tab' => $tab,
             'tabs' => [
                 ['key' => 'profile', 'label' => 'Profile'],
@@ -949,6 +943,7 @@ class SalesRepresentativeController extends Controller
                 'edit' => route('admin.sales-reps.edit', $salesRep),
                 'impersonate' => route('admin.sales-reps.impersonate', $salesRep),
                 'approve' => route('admin.sales-reps.approve', $salesRep),
+                'recovery' => route('admin.sales-reps.recovery', $salesRep),
                 'advance_payment' => route('admin.sales-reps.advance-payment', $salesRep),
                 'show_tab' => route('admin.sales-reps.show', ['sales_rep' => $salesRep->id]),
                 'commission_payout_create' => route('admin.commission-payouts.create', ['sales_rep_id' => $salesRep->id]),
@@ -1204,6 +1199,76 @@ class SalesRepresentativeController extends Controller
         return back()->with('status', $message);
     }
 
+    /**
+     * Record money the rep paid back. Stored as a negative "recovery" payout,
+     * so the rep's paid total and the sales payout expense both net it off.
+     * Capped at what the rep holds above the commission clients have paid for.
+     */
+    public function storeRecovery(Request $request, SalesRepresentative $salesRep, SalesRepStatementService $statements)
+    {
+        $holding = round(max(0, -$statements->forRep($salesRep->id)['balance']), 2);
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'received_at' => ['nullable', 'date'],
+            'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if ($holding <= 0) {
+            return back()->withErrors(['recovery' => 'This rep holds nothing above their earned commission, so there is nothing to recover.']);
+        }
+
+        $amount = round((float) $data['amount'], 2);
+
+        if ($amount > $holding) {
+            return back()
+                ->withErrors(['recovery' => sprintf('The rep holds %s above earned commission; a recovery cannot be more than that.', number_format($holding, 2))])
+                ->withInput();
+        }
+
+        $receivedAt = ! empty($data['received_at'])
+            ? (\App\Support\DateTimeFormat::parseDate($data['received_at']) ?? now())
+            : now();
+
+        DB::transaction(function () use ($salesRep, $amount, $data, $receivedAt, $holding, $request) {
+            $payout = CommissionPayout::create([
+                'sales_representative_id' => $salesRep->id,
+                'type' => 'recovery',
+                'total_amount' => -$amount,
+                'currency' => 'BDT',
+                'payout_method' => $data['payout_method'] ?? null,
+                'reference' => $data['reference'] ?? null,
+                'note' => $data['note'] ?? 'Paid back by the sales representative.',
+                'status' => 'paid',
+                'paid_at' => $receivedAt,
+            ]);
+
+            CommissionAuditLog::create([
+                'sales_representative_id' => $salesRep->id,
+                'commission_payout_id' => $payout->id,
+                'action' => 'recovery',
+                'status_from' => null,
+                'status_to' => 'paid',
+                'description' => 'Money paid back by the sales representative.',
+                'metadata' => [
+                    'amount' => $amount,
+                    'holding_before' => $holding,
+                    'holding_after' => round($holding - $amount, 2),
+                    'reference' => $data['reference'] ?? null,
+                ],
+                'created_by' => $request->user()?->id,
+            ]);
+        });
+
+        return back()->with('status', sprintf(
+            'Recovery of %s recorded. The rep now holds %s above earned commission.',
+            number_format($amount, 2),
+            number_format(max(0, $holding - $amount), 2)
+        ));
+    }
+
     public function impersonate(Request $request, SalesRepresentative $salesRep)
     {
         if ($request->session()->has('impersonator_id')) {
@@ -1251,6 +1316,10 @@ class SalesRepresentativeController extends Controller
 
     private function resolvePayoutSourceLabel(CommissionPayout $payout, array $advanceSourceLabelByPayoutId): string
     {
+        if ((string) ($payout->type ?? '') === 'recovery') {
+            return 'Paid back by the rep';
+        }
+
         if ($payout->project?->name) {
             return 'Project: '.$payout->project->name;
         }
@@ -1401,12 +1470,12 @@ class SalesRepresentativeController extends Controller
      * @param  array<int, array{status:string,last_login_at:Carbon|null}>  $loginStatuses
      * @return array<int, array<string, mixed>>
      */
-    private function serializeRepIndexRows(Collection $reps, BaseCollection $totals, array $loginStatuses): array
+    private function serializeRepIndexRows(Collection $reps, array $loginStatuses, array $statements = []): array
     {
         $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
 
-        return $reps->map(function (SalesRepresentative $rep) use ($totals, $loginStatuses, $dateTimeFormat): array {
-            $repTotals = $totals[$rep->id] ?? null;
+        return $reps->map(function (SalesRepresentative $rep) use ($loginStatuses, $dateTimeFormat, $statements): array {
+            $statement = $statements[$rep->id] ?? null;
             $loginMeta = $loginStatuses[$rep->id] ?? ['status' => 'logout', 'last_login_at' => null];
             $loginStatus = is_array($loginMeta) ? (string) ($loginMeta['status'] ?? 'logout') : 'logout';
             $lastLoginAt = is_array($loginMeta) ? ($loginMeta['last_login_at'] ?? null) : null;
@@ -1424,12 +1493,17 @@ class SalesRepresentativeController extends Controller
                 'projects_count' => (int) ($rep->projects_count ?? 0),
                 'maintenances_count' => (int) ($rep->maintenances_count ?? 0),
                 'last_login_label' => $lastLoginAt ? $lastLoginAt->format($dateTimeFormat) : '--',
-                'total_earned' => number_format((float) ($repTotals->total_earned ?? 0), 2),
-                'total_payable' => number_format((float) ($repTotals->total_payable ?? 0), 2),
-                'total_paid' => number_format((float) ($repTotals->total_paid ?? 0), 2),
                 'status' => $rep->status,
                 'status_label' => ucfirst((string) $rep->status),
                 'referred_customers_count' => (int) ($rep->referred_customers_count ?? 0),
+                'statement' => $statement ? [
+                    'commission_total' => $statement['commission_total'],
+                    'commission_earned' => $statement['commission_earned'],
+                    'earned_percent' => $statement['earned_percent'],
+                    'taken_net' => $statement['taken']['net'],
+                    'retained' => $statement['taken']['retained'],
+                    'balance' => $statement['balance'],
+                ] : null,
                 'routes' => [
                     'show' => route('admin.sales-reps.show', $rep),
                     'approve' => $rep->isPending() ? route('admin.sales-reps.approve', $rep) : null,

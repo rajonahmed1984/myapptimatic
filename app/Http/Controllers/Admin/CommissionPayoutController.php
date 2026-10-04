@@ -92,7 +92,7 @@ class CommissionPayoutController extends Controller
 
         if ($netPayable <= 0) {
             return back()
-                ->withErrors(['payout' => 'Advance payments already cover earned commission. Net payable is 0.'])
+                ->withErrors(['payout' => 'Nothing is payable now: the rep has already received at least the commission clients have paid for.'])
                 ->withInput();
         }
 
@@ -105,7 +105,7 @@ class CommissionPayoutController extends Controller
 
         if ($selectedTotal > $netPayable) {
             return back()
-                ->withErrors(['payout' => 'Selected payout exceeds net payable after advances.'])
+                ->withErrors(['payout' => 'Selected payout exceeds what is payable now: only commission clients have paid for, less what the rep has already received.'])
                 ->withInput();
         }
 

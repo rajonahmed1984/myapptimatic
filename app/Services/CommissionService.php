@@ -515,15 +515,21 @@ class CommissionService
 
         $advancePaid = 0.0;
         $regularPaidPayouts = 0.0;
+        $recovered = 0.0;
         if ($this->commissionPayoutHasColumn('type')) {
             $advancePaid = (float) (clone $paidPayoutsQuery)
                 ->where('type', 'advance')
                 ->sum('total_amount');
 
+            // Money the rep paid back, stored as negative "recovery" payouts.
+            $recovered = abs((float) (clone $paidPayoutsQuery)
+                ->where('type', 'recovery')
+                ->sum('total_amount'));
+
             $regularPaidPayouts = (float) (clone $paidPayoutsQuery)
                 ->where(function ($query) {
                     $query->whereNull('type')
-                        ->orWhere('type', '!=', 'advance');
+                        ->orWhereNotIn('type', ['advance', 'recovery']);
                 })
                 ->sum('total_amount');
         } else {
@@ -541,25 +547,43 @@ class CommissionService
                 ->sum('ce.commission_amount');
         }
 
+        // Commission only counts as payable once the client has paid for it:
+        // a project's share follows its client payments, an invoice's commission
+        // follows the invoice.
+        $activeEarnings = (clone $baseQuery)
+            ->whereIn('ce.status', ['pending', 'earned', 'payable', 'paid'])
+            ->select('ce.*')
+            ->get();
+        $ratios = app(SalesRepStatementService::class)->realization($activeEarnings);
+        $earnedActual = round($activeEarnings->sum(fn ($e) => (float) $e->commission_amount * ($ratios[$e->id] ?? 0)), 2);
+        $payableActual = round($activeEarnings->where('status', 'payable')->sum(fn ($e) => (float) $e->commission_amount * ($ratios[$e->id] ?? 0)), 2);
+
         $totalEarned = round($totalEarned, 2);
         $payable = round($payable, 2);
-        $totalPaid = round($regularPaidPayouts + $advancePaid + $legacyPaidWithoutPayout, 2);
+        $totalPaid = round($regularPaidPayouts + $advancePaid + $legacyPaidWithoutPayout - $recovered, 2);
         $overpaid = round(max(0, $totalPaid - $totalEarned), 2);
         $outstanding = round(max(0, $totalEarned - $totalPaid), 2);
-        $netPayable = round(max(0, min($payable, $outstanding)), 2);
+        $outstandingActual = round(max(0, $earnedActual - $totalPaid), 2);
+        $netPayable = round(max(0, min($payableActual, $outstandingActual)), 2);
 
         return [
             'total_earned' => $totalEarned,
+            'earned_actual' => $earnedActual,
             'total_paid' => $totalPaid,
             'payable_balance' => $netPayable,
             'payable_gross' => $payable,
             'advance_paid' => $advancePaid,
+            'recovered' => round($recovered, 2),
             'overpaid' => $overpaid,
+            'overtaken_actual' => round(max(0, $totalPaid - $earnedActual), 2),
             'outstanding' => $outstanding,
         ];
     }
 
-    private function dedupedEarningsQuery(int $salesRepId)
+    /**
+     * The rep's earnings with one row per idempotency key (the latest).
+     */
+    public function dedupedEarningsQuery(int $salesRepId)
     {
         $latestByKeyQuery = CommissionEarning::query()
             ->selectRaw('MAX(id) as id')

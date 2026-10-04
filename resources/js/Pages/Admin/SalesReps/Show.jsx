@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import CommissionStatement, { balanceTone, taka } from '../../../Components/Commission/CommissionStatement';
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const invoiceBadgeClass = (status) => {
@@ -35,6 +36,54 @@ const earningStatusBadgeClass = (status) => {
     return 'border-slate-300 bg-slate-50 text-slate-700';
 };
 
+function RecoveryForm({ action, csrf, holding, paymentMethods = [], error }) {
+    if (!action) return null;
+
+    return (
+        <details className="mx-4 mb-4 rounded-xl border border-rose-200 bg-white sm:mx-5" open={Boolean(error)}>
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-rose-700">
+                Record money paid back by the rep
+                <span className="ml-2 text-xs font-normal text-slate-500">up to {taka(holding)}</span>
+            </summary>
+            <form method="POST" action={action} data-native="true" className="grid gap-3 border-t border-rose-100 px-4 py-4 md:grid-cols-6">
+                <input type="hidden" name="_token" value={csrf} />
+                <label className="md:col-span-1">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Amount (৳)</span>
+                    <input type="number" name="amount" required min="0.01" max={holding} step="0.01" defaultValue={holding.toFixed(2)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </label>
+                <label className="md:col-span-1">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Received on</span>
+                    <input type="date" name="received_at" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </label>
+                <label className="md:col-span-1">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Method</span>
+                    <select name="payout_method" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" defaultValue="">
+                        <option value="">--</option>
+                        {paymentMethods.map((method) => (
+                            <option key={method.code} value={method.code}>{method.name}</option>
+                        ))}
+                    </select>
+                </label>
+                <label className="md:col-span-1">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Reference</span>
+                    <input type="text" name="reference" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </label>
+                <label className="md:col-span-2">
+                    <span className="mb-1 block text-xs font-semibold text-slate-600">Note</span>
+                    <input type="text" name="note" placeholder="e.g. Cash returned at office" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </label>
+                {error ? <div className="text-xs text-rose-600 md:col-span-6">{error}</div> : null}
+                <div className="md:col-span-6">
+                    <button type="submit" className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700">
+                        Record paid back
+                    </button>
+                    <span className="ml-3 text-xs text-slate-500">Lowers the rep's balance and the sales payout expense for that date.</span>
+                </div>
+            </form>
+        </details>
+    );
+}
+
 export default function Show({
     pageTitle = 'Sales Representative',
     rep,
@@ -51,6 +100,7 @@ export default function Show({
     advanceProjects = [],
     advanceSources = [],
     paymentMethods = [],
+    statement = null,
     routes = {},
 }) {
     const { props } = usePage();
@@ -185,59 +235,22 @@ export default function Show({
 
             {tab === 'profile' ? (
                 <>
-                    <div className="grid gap-4 md:grid-cols-4">
-                        <Metric
-                            title="Total Commission Earned"
-                            value={money(summary?.total_earned)}
-                            note={
-                                <>
-                                    <div className="flex flex-wrap gap-2">
-                                        <SubBadge tone="sky" label="Projects" value={money(summary?.project_earned)} />
-                                        <SubBadge tone="violet" label="Services" value={money(summary?.maintenance_earned)} />
-                                    </div>
-                                    <div className="text-[11px] text-slate-500">All confirmed commission generated so far.</div>
-                                </>
-                            }
-                        />
-                        <Metric
-                            title="Ready to Pay"
-                            value={money(summary?.payable)}
-                            note={
-                                <>
-                                    <div className="flex flex-wrap gap-2">
-                                        <SubBadge tone="emerald" label="Ready now" value={money(summary?.payable)} />
-                                        <SubBadge tone="amber" label="Held" value={money(summary?.not_yet_payable)} />
-                                    </div>
-                                    <div>{summary?.payable_label}</div>
-                                </>
-                            }
-                        />
-                        <Metric
-                            title="Paid to Rep"
-                            value={money(summary?.paid)}
-                            note={
-                                <>
-                                    <div className="flex flex-wrap gap-2">
-                                        <SubBadge tone="teal" label="Paid" value={money(summary?.paid)} />
-                                    </div>
-                                    <div className="text-[11px] text-slate-500">Includes payouts and collected-retained amounts.</div>
-                                </>
-                            }
-                        />
-                        <Metric
-                            title="Advance / Retained"
-                            value={money(summary?.advance_paid)}
-                            note={
-                                <>
-                                    <div className="flex flex-wrap gap-2">
-                                        <SubBadge tone="rose" label="Retained" value={money(summary?.advance_paid)} />
-                                        {Number(summary?.overpaid || 0) > 0 ? <SubBadge tone="slate" label="Overpaid" value={money(summary?.overpaid)} /> : null}
-                                    </div>
-                                    <div className="text-[11px] text-slate-500">Company advance or client-collected amount kept by rep.</div>
-                                </>
-                            }
-                        />
-                    </div>
+                    <CommissionStatement
+                        statement={statement}
+                        audience="admin"
+                        name={rep?.name}
+                        footer={
+                            balanceTone(statement?.balance) === 'owes' ? (
+                                <RecoveryForm
+                                    action={routes?.recovery}
+                                    csrf={csrf}
+                                    holding={Math.abs(Number(statement?.balance || 0))}
+                                    paymentMethods={paymentMethods}
+                                    error={props?.errors?.recovery}
+                                />
+                            ) : null
+                        }
+                    />
 
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="card p-4">
@@ -391,7 +404,7 @@ export default function Show({
 
             {tab === 'invoices' ? <InvoiceTable rows={invoiceEarnings} /> : null}
 
-            {tab === 'earnings' ? <EarningsTable rows={recentEarnings} summary={summary} route={routes?.commission_payout_create} /> : null}
+            {tab === 'earnings' ? <EarningsTable rows={recentEarnings} summary={summary} statement={statement} route={routes?.commission_payout_create} /> : null}
 
             {tab === 'payouts' ? <PayoutsTable rows={recentPayouts} /> : null}
 
@@ -405,25 +418,6 @@ export default function Show({
 
 function Metric({ title, value, note }) {
     return <div className="card p-4"><div className="text-xs uppercase tracking-[0.28em] text-slate-500">{title}</div><div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>{note ? <div className="text-xs text-slate-500">{note}</div> : null}</div>;
-}
-
-function SubBadge({ tone = 'slate', label, value }) {
-    const toneClass = {
-        emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        amber: 'border-amber-200 bg-amber-50 text-amber-700',
-        teal: 'border-teal-200 bg-teal-50 text-teal-700',
-        rose: 'border-rose-200 bg-rose-50 text-rose-700',
-        sky: 'border-sky-200 bg-sky-50 text-sky-700',
-        violet: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700',
-        slate: 'border-slate-200 bg-slate-50 text-slate-700',
-    }[tone] || 'border-slate-200 bg-slate-50 text-slate-700';
-
-    return (
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${toneClass}`}>
-            <span>{label}</span>
-            <span>{value}</span>
-        </span>
-    );
 }
 
 function SimpleTable({ title, headers, rows, empty }) {
@@ -443,13 +437,25 @@ function InvoiceTable({ rows }) {
     );
 }
 
-function EarningsTable({ rows, summary, route }) {
+function EarningsTable({ rows, summary, statement, route }) {
     return (
         <>
             <div className="grid gap-4 md:grid-cols-3">
-                <Metric title="Earned Amount" value={money(summary?.total_earned)} note="Includes pending, payable, and paid commission." />
-                <Metric title="Outstanding" value={money(summary?.outstanding)} note="Amount yet to be paid (total minus paid)." />
-                <Metric title="Payable (Net)" value={money(summary?.payable)} note="Ready for payout after advances." />
+                <Metric
+                    title="Earned (client paid)"
+                    value={taka(statement?.commission_earned)}
+                    note={`of ${taka(statement?.commission_total)} total commission`}
+                />
+                <Metric
+                    title="Balance"
+                    value={`${balanceTone(statement?.balance) === 'owes' ? '−' : ''}${taka(statement?.balance)}`}
+                    note={balanceTone(statement?.balance) === 'owes' ? 'Rep holds more than earned' : 'Earned minus everything received'}
+                />
+                <Metric
+                    title="Payable now"
+                    value={money(summary?.payable)}
+                    note="Client-paid commission not yet received. Payouts cannot exceed this."
+                />
             </div>
             <div className="mt-4 card p-4">
                 <div className="mb-3 flex items-center justify-between">

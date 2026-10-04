@@ -618,6 +618,7 @@ Route::middleware([
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::post('sales-reps/{sales_rep}/approve', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'approve'])->name('sales-reps.approve');
+    Route::post('sales-reps/{sales_rep}/recovery', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeRecovery'])->name('sales-reps.recovery');
     Route::post('sales-reps/{sales_rep}/advance-payment', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeAdvancePayment'])->name('sales-reps.advance-payment');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)

@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import CommissionStatement from '../../../Components/Commission/CommissionStatement';
 
 const statusClass = (label) => {
     const key = String(label || '').toLowerCase().trim();
@@ -14,7 +15,7 @@ const statusClass = (label) => {
     return 'border-slate-200 bg-slate-100 text-slate-700';
 };
 
-export default function Index({ earnings = [], assigned_projects = [], pagination = {}, routes = {} }) {
+export default function Index({ statement = null, earnings = [], assigned_projects = [], pagination = {}, routes = {} }) {
     const assignedCommissionTotal = assigned_projects.reduce((sum, project) => sum + Number(project?.commission_amount || 0), 0);
     const assignedCurrency = assigned_projects.find((project) => project?.currency)?.currency || 'BDT';
 
@@ -27,6 +28,8 @@ export default function Index({ earnings = [], assigned_projects = [], paginatio
             <Head title="My Earnings" />
 
             <div className="space-y-6">
+                <CommissionStatement statement={statement} audience="rep" />
+
                 {assigned_projects.length > 0 ? (
                     <div className="card overflow-hidden">
                         <div className="px-4 py-3 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
