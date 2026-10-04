@@ -82,7 +82,7 @@ class CommissionService
         $subscriptionCommissionAmount = $invoice->subscription?->sales_rep_commission_amount;
         $commissionAmount = $subscriptionCommissionAmount !== null
             ? round((float) $subscriptionCommissionAmount, 2)
-            : ($rule ? $this->calculateCommission($paidAmount, $rule) : 0.0);
+            : ($rule ? $this->calculateCommission($paidAmount, $rule) : $this->referralCommission($invoice, $salesRepId, $paidAmount));
         $idempotencyKey = sprintf('invoice:%s:rep:%s:source:%s', $invoice->id, $salesRepId, $sourceType);
 
         return DB::transaction(function () use ($invoice, $salesRepId, $commissionAmount, $paidAmount, $sourceType, $idempotencyKey) {
@@ -133,6 +133,22 @@ class CommissionService
 
             return $earning;
         });
+    }
+
+    /**
+     * Commission a rep earns on a subscription invoice of a customer they
+     * referred, when nothing more specific prices it: the rep's own
+     * "Subscriptions %". Anything else earns nothing here, as before.
+     */
+    private function referralCommission(Invoice $invoice, int $salesRepId, float $paidAmount): float
+    {
+        if (! $invoice->subscription_id || (int) ($invoice->customer?->referred_by_sales_rep_id ?? 0) !== $salesRepId) {
+            return 0.0;
+        }
+
+        $percentage = SalesRepresentative::query()->whereKey($salesRepId)->value('subscription_commission_percentage');
+
+        return $percentage !== null ? round($paidAmount * ((float) $percentage / 100), 2) : 0.0;
     }
 
     /**

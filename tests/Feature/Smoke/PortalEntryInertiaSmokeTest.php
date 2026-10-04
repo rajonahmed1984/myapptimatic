@@ -13,7 +13,8 @@ class PortalEntryInertiaSmokeTest extends TestCase
         $cases = [
             ['/admin', route('admin.login')],
             [route('employee.home'), route('employee.login')],
-            [route('sales.home'), route('sales.login')],
+            // Sales reps share the customer login page.
+            [route('sales.home'), route('login')],
             [route('support.home'), route('support.login')],
         ];
 
@@ -37,7 +38,6 @@ class PortalEntryInertiaSmokeTest extends TestCase
             ['login', 'Auth/PortalLogin'],
             ['admin.login', 'Auth/PortalLogin'],
             ['employee.login', 'Auth/PortalLogin'],
-            ['sales.login', 'Auth/PortalLogin'],
             ['support.login', 'Auth/PortalLogin'],
             ['register', 'Auth/Register'],
             ['project-client.login', 'Auth/ProjectLogin'],

@@ -47,7 +47,7 @@ class NoBreakSmokeTest extends TestCase
             [$client, 'login.attempt', 'client.dashboard', 'web', 'login', 'web'],
             [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin.login', 'admin'],
             [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee.login', 'employee'],
-            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'sales.login', 'sales'],
+            [$sales, 'login.attempt', 'rep.dashboard', 'sales', 'login', 'sales'],
             [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support.login', 'support'],
         ];
 

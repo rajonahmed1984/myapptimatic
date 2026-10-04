@@ -70,7 +70,7 @@ class LogoutRedirectTest extends TestCase
         $this->assertGuest('employee');
     }
 
-    public function test_sales_logout_redirects_to_sales_login(): void
+    public function test_sales_logout_redirects_to_shared_login(): void
     {
         $user = User::factory()->create([
             'role' => Role::SALES,
@@ -90,7 +90,7 @@ class LogoutRedirectTest extends TestCase
         ])->actingAs($user, 'sales')
             ->post(route('logout'));
 
-        $response->assertRedirect(route('sales.login'));
+        $response->assertRedirect(route('login'));
         $this->assertGuest('sales');
     }
 

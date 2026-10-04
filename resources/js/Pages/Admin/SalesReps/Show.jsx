@@ -136,6 +136,25 @@ export default function Show({
                     <div className="text-sm text-slate-500">{rep?.email || 'No email on file'}</div>
                 </div>
                 <div className="flex flex-wrap gap-3">
+                    {rep?.is_pending ? (
+                        <form method="POST" action={routes?.approve} data-native="true" className="flex items-center gap-2">
+                            <input type="hidden" name="_token" value={csrf} />
+                            <input
+                                type="number"
+                                name="subscription_commission_percentage"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                defaultValue={rep?.subscription_commission_percentage ?? ''}
+                                placeholder="Subscriptions %"
+                                title="Commission on subscription invoices of customers this rep refers"
+                                className="w-36 rounded-full border border-slate-300 px-3 py-2 text-sm"
+                            />
+                            <button type="submit" className="rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">
+                                Approve
+                            </button>
+                        </form>
+                    ) : null}
                     <form method="POST" action={routes?.impersonate} data-native="true">
                         <input type="hidden" name="_token" value={csrf} />
                         <button type="submit" className="rounded-full border border-teal-200 px-4 py-2 text-sm font-semibold text-teal-700">
@@ -255,6 +274,17 @@ export default function Show({
                                 <div>
                                     <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">User</dt>
                                     <dd className="mt-1">{rep?.user_name || '--'} <span className="text-slate-500">{rep?.user_email || ''}</span></dd>
+                                </div>
+                                <div className="col-span-3">
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Referral link</dt>
+                                    <dd className="mt-1 break-all">
+                                        {rep?.referral_url ? (
+                                            <span className="font-mono text-xs text-slate-800">{rep.referral_url}</span>
+                                        ) : '--'}
+                                        <span className="ml-2 text-xs text-slate-500">
+                                            {rep?.referred_customers_count ?? 0} customer(s) signed up through it
+                                        </span>
+                                    </dd>
                                 </div>
                             </dl>
                         </div>

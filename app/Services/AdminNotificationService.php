@@ -243,6 +243,32 @@ class AdminNotificationService
         $this->sendGeneric($recipients, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::SUPPORT);
     }
 
+    /**
+     * A sales rep signed up on the shared registration page and is waiting
+     * for approval.
+     */
+    public function sendSalesRepSignup(\App\Models\SalesRepresentative $rep): void
+    {
+        $recipients = $this->adminRecipients();
+        if (empty($recipients)) {
+            return;
+        }
+
+        $companyName = Setting::getValue('company_name', config('app.name'));
+        $subject = 'New sales representative waiting for approval: '.$rep->name;
+        $body = "{{rep_name}} ({{rep_email}}, {{rep_phone}}) signed up as a sales representative.\n"
+            ."Review and approve the account: {{rep_url}}";
+
+        $bodyHtml = $this->formatEmailBody($body, [
+            '{{rep_name}}' => $rep->name,
+            '{{rep_email}}' => $rep->email ?: '--',
+            '{{rep_phone}}' => $rep->phone ?: '--',
+            '{{rep_url}}' => route('admin.sales-reps.show', $rep),
+        ]);
+
+        $this->sendGeneric($recipients, $subject, $bodyHtml, $this->resolveFromEmail(null), $companyName, [], MailCategory::SYSTEM);
+    }
+
     public function sendOrderAccepted(Order $order): void
     {
         $recipients = $this->adminRecipients();

@@ -1,14 +1,28 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 
-const statusBadgeClass = (status) =>
-    status === 'active'
-        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-        : 'border-slate-300 bg-slate-50 text-slate-600';
+const statusBadgeClass = (status) => {
+    if (status === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    if (status === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
+    return 'border-slate-300 bg-slate-50 text-slate-600';
+};
+
+function ApproveButton({ href, csrf }) {
+    if (!href) return null;
+
+    return (
+        <form method="POST" action={href} data-native="true" className="mt-1">
+            <input type="hidden" name="_token" value={csrf} />
+            <button type="submit" className="rounded-full bg-teal-600 px-3 py-1 text-xs font-semibold text-white hover:bg-teal-700">
+                Approve
+            </button>
+        </form>
+    );
+}
 
 export default function Index({
     pageTitle = 'Sales Representatives',
@@ -17,6 +31,7 @@ export default function Index({
     pagination = {},
     routes = {},
 }) {
+    const csrf = usePage().props?.csrf_token || '';
     const { searchTerm, setSearchTerm, submitSearch } = useInertiaLiveSearch({
         initialValue: filters?.search ?? '',
         url: routes?.index,
@@ -78,6 +93,7 @@ export default function Index({
                             ),
                         },
                         { key: 'services', header: 'Services', cellClassName: 'text-sm text-slate-700', render: (rep) => `${rep.active_subscriptions_count} (${rep.subscriptions_count})` },
+                        { key: 'referrals', header: 'Referred', headerClassName: 'text-right', cellClassName: 'text-right text-sm text-slate-700', render: (rep) => rep.referred_customers_count },
                         {
                             key: 'projects',
                             header: 'Projects & Maintenance',
@@ -97,7 +113,12 @@ export default function Index({
                         {
                             key: 'status',
                             header: 'Status',
-                            render: (rep) => <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(rep.status)}`}>{rep.status_label}</span>,
+                            render: (rep) => (
+                                <>
+                                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadgeClass(rep.status)}`}>{rep.status_label}</span>
+                                    <ApproveButton href={rep.routes?.approve} csrf={csrf} />
+                                </>
+                            ),
                         },
                     ]}
                     renderMobileCard={(rep) => (
@@ -112,8 +133,9 @@ export default function Index({
                             ]}
                         >
                             <div className="text-xs text-slate-500">
-                                Projects: {rep.projects_count} · Maintenance: {rep.maintenances_count} · Services: {rep.active_subscriptions_count}/{rep.subscriptions_count}
+                                Projects: {rep.projects_count} · Maintenance: {rep.maintenances_count} · Services: {rep.active_subscriptions_count}/{rep.subscriptions_count} · Referred: {rep.referred_customers_count}
                             </div>
+                            <ApproveButton href={rep.routes?.approve} csrf={csrf} />
                         </MobileCard>
                     )}
                 />

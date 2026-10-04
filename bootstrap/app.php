@@ -68,7 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($request->is('sales') || $request->is('sales/*')) {
-                return '/sales/login';
+                return '/login';
             }
 
             if ($request->is('support') || $request->is('support/*')) {
@@ -114,6 +114,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 \App\Http\Middleware\NormalizeDisplayDateInput::class,
                 \App\Http\Middleware\HandlePartialResponse::class,
                 \App\Http\Middleware\NormalizeAjaxRedirectResponse::class,
+                \App\Http\Middleware\CaptureSalesReferral::class,
             ]
         );
     })

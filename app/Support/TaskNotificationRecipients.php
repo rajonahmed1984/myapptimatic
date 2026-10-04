@@ -301,7 +301,7 @@ class TaskNotificationRecipients
                 $taskRoute = 'admin.projects.tasks.show';
                 $projectRoute = 'admin.projects.show';
             } elseif ($actor->isSales()) {
-                $loginPath = '/sales/login';
+                $loginPath = '/login';
                 $loginLabel = 'log in to the sales area';
                 $taskRoute = 'rep.projects.tasks.show';
                 $projectRoute = 'rep.projects.show';

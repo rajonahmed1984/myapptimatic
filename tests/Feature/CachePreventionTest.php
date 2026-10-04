@@ -93,7 +93,7 @@ class CachePreventionTest extends TestCase
     public function test_accessing_sales_dashboard_without_auth_redirects(): void
     {
         $response = $this->get(route('rep.dashboard'));
-        $response->assertRedirect(route('sales.login'));
+        $response->assertRedirect(route('login'));
     }
 
     /**

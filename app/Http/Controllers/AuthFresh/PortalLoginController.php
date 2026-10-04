@@ -24,6 +24,11 @@ class PortalLoginController extends Controller
         $portal = Portal::normalize($portal);
         Portal::setPortal($request, $portal);
 
+        // A sales rep signed in through the shared login already has a portal.
+        if ($portal === 'web' && Auth::guard('sales')->check()) {
+            return redirect()->route('rep.dashboard');
+        }
+
         $guard = Portal::guard($portal);
         $authGuard = Auth::guard($guard);
         if ($authGuard->check()) {
@@ -59,7 +64,7 @@ class PortalLoginController extends Controller
     private function showInertiaProps(Request $request, string $portal): array
     {
         $titleByPortal = [
-            'web' => 'Client Sign In',
+            'web' => 'Sign In',
             'admin' => 'Admin Sign In',
             'employee' => 'Employee Login',
             'sales' => 'Sales Login',

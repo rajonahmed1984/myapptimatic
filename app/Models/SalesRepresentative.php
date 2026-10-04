@@ -11,6 +11,8 @@ use App\Models\CommissionPayout;
 use App\Models\Concerns\HasActivityTracking;
 use App\Models\ProjectMaintenance;
 use App\Models\Subscription;
+use App\Support\UrlResolver;
+use Illuminate\Support\Str;
 
 class SalesRepresentative extends Model
 {
@@ -23,6 +25,7 @@ class SalesRepresentative extends Model
         'email',
         'phone',
         'status',
+        'referral_code',
         'payout_method_default',
         'payout_details_encrypted',
         'metadata',
@@ -37,6 +40,48 @@ class SalesRepresentative extends Model
         'payout_details_encrypted' => 'array',
         'metadata' => 'array',
     ];
+
+    /** Self-registered, waiting for an admin to approve. */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUSES = ['active', 'inactive', self::STATUS_PENDING];
+
+    protected static function booted(): void
+    {
+        static::creating(function (SalesRepresentative $rep) {
+            if (! $rep->referral_code) {
+                $rep->referral_code = static::generateReferralCode();
+            }
+        });
+    }
+
+    public static function generateReferralCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(8));
+        } while (static::query()->where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * Where to send people: sign-up with this rep's code. The code also works
+     * on any other page of the site (?ref=CODE).
+     */
+    public function referralUrl(): string
+    {
+        return rtrim(UrlResolver::portalUrl(), '/').'/register?ref='.urlencode((string) $this->referral_code);
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function referredCustomers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'referred_by_sales_rep_id');
+    }
 
     public function user(): BelongsTo
     {

@@ -38,8 +38,8 @@ class Portal
             ],
             'sales' => [
                 'guard' => 'sales',
-                'login_path' => '/sales/login',
-                'login_route' => 'sales.login',
+                'login_path' => '/login',
+                'login_route' => 'login',
                 'default_redirect' => 'rep.dashboard',
                 'recaptcha_action' => 'SALES_LOGIN',
             ],

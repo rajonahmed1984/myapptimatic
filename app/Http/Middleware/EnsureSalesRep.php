@@ -17,7 +17,7 @@ class EnsureSalesRep
         $user = Auth::guard('sales')->user();
 
         if (! $user) {
-            return redirect()->route('sales.login');
+            return redirect()->route('login');
         }
 
         $rep = SalesRepresentative::query()

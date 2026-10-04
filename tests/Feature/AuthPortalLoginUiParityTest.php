@@ -17,12 +17,15 @@ class AuthPortalLoginUiParityTest extends TestCase
     #[Test]
     public function portal_login_pages_render_inertia_component(): void
     {
-        foreach (['login', 'admin.login', 'employee.login', 'sales.login', 'support.login'] as $routeName) {
+        foreach (['login', 'admin.login', 'employee.login', 'support.login'] as $routeName) {
             $this->get(route($routeName))
                 ->assertOk()
                 ->assertSee('data-page=')
                 ->assertSee('Auth\\/PortalLogin', false);
         }
+
+        // Sales reps sign in on the shared customer login.
+        $this->get(route('sales.login'))->assertRedirect(route('login'));
     }
 
     #[Test]
@@ -32,7 +35,6 @@ class AuthPortalLoginUiParityTest extends TestCase
             ['login', 'web', route('login.attempt', [], false), route('password.request', [], false)],
             ['admin.login', 'admin', route('admin.login.attempt', [], false), route('admin.password.request', [], false)],
             ['employee.login', 'employee', route('employee.login.attempt', [], false), route('employee.password.request', [], false)],
-            ['sales.login', 'sales', route('sales.login.attempt', [], false), route('sales.password.request', [], false)],
             ['support.login', 'support', route('support.login.attempt', [], false), route('support.password.request', [], false)],
         ];
 

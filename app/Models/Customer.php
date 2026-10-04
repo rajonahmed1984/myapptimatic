@@ -25,7 +25,7 @@ class Customer extends Model
         'status',
         'default_sales_rep_id',
         'access_override_until',
-        'referred_by_affiliate_id',
+        'referred_by_sales_rep_id',
         'notes',
         'avatar_path',
         'nid_path',
@@ -112,13 +112,11 @@ class Customer extends Model
         return $this->hasMany(ProjectMaintenance::class);
     }
 
-    public function affiliate(): HasOne
+    /**
+     * The sales rep whose referral link this customer signed up through.
+     */
+    public function referredBySalesRep(): BelongsTo
     {
-        return $this->hasOne(Affiliate::class);
-    }
-
-    public function referredByAffiliate(): BelongsTo
-    {
-        return $this->belongsTo(Affiliate::class, 'referred_by_affiliate_id');
+        return $this->belongsTo(SalesRepresentative::class, 'referred_by_sales_rep_id');
     }
 }

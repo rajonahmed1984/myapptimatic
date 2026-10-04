@@ -1705,7 +1705,7 @@ class ProjectChatController extends Controller
         }
 
         $chatUrl = $this->safeRoute('rep.projects.chat', $project);
-        $loginUrl = $this->safeRoute('sales.login');
+        $loginUrl = $this->safeRoute('login');
         $this->deliverMentionNotification($email, $project, $authorName, $snippet, $chatUrl, $loginUrl, 'Sales login');
     }
 
@@ -1739,7 +1739,7 @@ class ProjectChatController extends Controller
         }
 
         if ($user->isSales()) {
-            return ['rep.projects.chat', 'sales.login', 'Sales login'];
+            return ['rep.projects.chat', 'login', 'Sign in'];
         }
 
         if ($user->isSupport()) {

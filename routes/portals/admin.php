@@ -2,9 +2,6 @@
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\AffiliateCommissionController;
-use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
-use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -61,7 +58,6 @@ use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetContro
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
 use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionController;
-use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\ChatController as ClientChatController;
 use App\Http\Controllers\Client\TasksController as ClientTasksController;
@@ -621,6 +617,7 @@ Route::middleware([
     Route::get('projects/{project}/tasks/{task}/messages/{message}/attachment', [ProjectTaskChatController::class, 'attachment'])->name('projects.tasks.messages.attachment');
     Route::resource('sales-reps', \App\Http\Controllers\Admin\SalesRepresentativeController::class)->except(['destroy']);
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
+    Route::post('sales-reps/{sales_rep}/approve', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'approve'])->name('sales-reps.approve');
     Route::post('sales-reps/{sales_rep}/advance-payment', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeAdvancePayment'])->name('sales-reps.advance-payment');
     Route::get('support-tickets', [AdminSupportTicketController::class, 'index'])
         ->middleware(HandleInertiaRequests::class)
@@ -764,16 +761,8 @@ Route::middleware([
         ->name('logs.email.resend');
     Route::delete('logs/email/{systemLog}', [SystemLogController::class, 'destroy'])->name('logs.email.delete');
 
-    // Affiliate routes
-    Route::resource('affiliates', AdminAffiliateController::class)->whereNumber('affiliate');
-    Route::get('affiliates/commissions', [AffiliateCommissionController::class, 'index'])->name('affiliates.commissions.index');
-    Route::post('affiliates/commissions/{commission}/approve', [AffiliateCommissionController::class, 'approve'])->name('affiliates.commissions.approve');
-    Route::post('affiliates/commissions/{commission}/reject', [AffiliateCommissionController::class, 'reject'])->name('affiliates.commissions.reject');
-    Route::post('affiliates/commissions/bulk-approve', [AffiliateCommissionController::class, 'bulkApprove'])->name('affiliates.commissions.bulk-approve');
-    Route::get('affiliates/payouts', [AffiliatePayoutController::class, 'index'])->name('affiliates.payouts.index');
-    Route::get('affiliates/payouts/create', [AffiliatePayoutController::class, 'create'])->name('affiliates.payouts.create');
-    Route::post('affiliates/payouts', [AffiliatePayoutController::class, 'store'])->name('affiliates.payouts.store');
-    Route::get('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'show'])->name('affiliates.payouts.show');
-    Route::post('affiliates/payouts/{payout}/complete', [AffiliatePayoutController::class, 'markAsCompleted'])->name('affiliates.payouts.complete');
-    Route::delete('affiliates/payouts/{payout}', [AffiliatePayoutController::class, 'destroy'])->name('affiliates.payouts.destroy');
+    // Affiliates were merged into sales representatives.
+    Route::get('affiliates/{any?}', fn () => redirect()->route('admin.sales-reps.index'))
+        ->where('any', '.*')
+        ->name('affiliates.index');
 });

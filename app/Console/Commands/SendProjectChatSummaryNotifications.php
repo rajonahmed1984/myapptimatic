@@ -187,7 +187,7 @@ class SendProjectChatSummaryNotifications extends Command
             $loginLabel = 'log in to the client area';
         } elseif ($user->isSales()) {
             $prefix = 'rep';
-            $loginPath = '/sales/login';
+            $loginPath = '/login';
             $loginLabel = 'log in to the sales area';
         } else {
             $prefix = 'admin';
@@ -222,7 +222,7 @@ class SendProjectChatSummaryNotifications extends Command
         return [
             'email' => (string) ($salesRep->user?->email ?: $salesRep->email),
             'chat_url' => $this->chatUrl('rep', $project),
-            'portal_login_url' => rtrim($portalUrl, '/') . '/sales/login',
+            'portal_login_url' => rtrim($portalUrl, '/') . '/login',
             'portal_login_label' => 'log in to the sales area',
         ];
     }

@@ -265,7 +265,7 @@ class RolePasswordResetController extends Controller
                 'role' => Role::SALES,
                 'guard' => 'sales',
                 'broker' => 'sales',
-                'login_route' => 'sales.login',
+                'login_route' => 'login',
                 'dashboard_route' => 'rep.dashboard',
                 'password_email_route' => 'sales.password.email',
                 'password_update_route' => 'sales.password.update',

@@ -10,8 +10,15 @@ import SubmitButton from '../../Components/Form/SubmitButton';
 import TextAreaField from '../../Components/Form/TextAreaField';
 import GuestAuthLayout from '../../Layouts/GuestAuthLayout';
 
-export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
+const ACCOUNT_TYPES = [
+    { value: 'customer', label: 'Customer', hint: 'Buy and manage services' },
+    { value: 'sales_rep', label: 'Sales Representative', hint: 'Refer customers, earn commission' },
+];
+
+export default function Register({ form = {}, routes = {}, recaptcha = {}, referred_by: referredBy = null }) {
     const { errors = {}, flash = {}, branding = {} } = usePage().props;
+    const [accountType, setAccountType] = useState(form?.account_type === 'sales_rep' ? 'sales_rep' : 'customer');
+    const isSalesRep = accountType === 'sales_rep';
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
     const [password, setPassword] = useState('');
@@ -135,8 +142,8 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                         />
 
                         <div className="text-center mb-6">
-                            <p className="text-xs font-semibold uppercase tracking-[0.36em] text-teal-600">Welcome Back</p>
-                            <h1 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">Register</h1>
+                            <p className="text-xs font-semibold uppercase tracking-[0.36em] text-teal-600">Welcome</p>
+                            <h1 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">Create an account</h1>
                             <p className="mt-2 text-xs text-slate-500">
                                 Already have an account?{' '}
                                 <a href={routes.login || '/login'} className="font-semibold text-teal-600 hover:text-teal-500" data-native="true">
@@ -154,6 +161,33 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                         >
                             <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
                             {form?.redirect ? <input type="hidden" name="redirect" value={form.redirect} /> : null}
+                            <input type="hidden" name="account_type" value={accountType} />
+
+                            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1" role="radiogroup" aria-label="Account type">
+                                {ACCOUNT_TYPES.map((type) => (
+                                    <button
+                                        key={type.value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={accountType === type.value}
+                                        onClick={() => setAccountType(type.value)}
+                                        className={`rounded-xl px-3 py-2 text-left transition ${accountType === type.value ? 'bg-white shadow-sm' : 'hover:bg-white/60'}`}
+                                    >
+                                        <span className={`block text-xs font-semibold ${accountType === type.value ? 'text-teal-700' : 'text-slate-700'}`}>{type.label}</span>
+                                        <span className="block text-[11px] text-slate-500">{type.hint}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {isSalesRep ? (
+                                <p className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-xs text-teal-800">
+                                    After an admin approves your account, sign in here with the same email and password. You get a referral link: customers who sign up through it are assigned to you, and you earn commission on what they pay.
+                                </p>
+                            ) : referredBy?.name ? (
+                                <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                                    Referred by <span className="font-semibold text-slate-800">{referredBy.name}</span>
+                                </p>
+                            ) : null}
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <InputField
@@ -164,13 +198,15 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                     error={errors?.name}
                                     inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
                                 />
-                                <InputField
-                                    name="company_name"
-                                    defaultValue={form?.company_name || ''}
-                                    placeholder="Company name"
-                                    error={errors?.company_name}
-                                    inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
-                                />
+                                {!isSalesRep ? (
+                                    <InputField
+                                        name="company_name"
+                                        defaultValue={form?.company_name || ''}
+                                        placeholder="Company name"
+                                        error={errors?.company_name}
+                                        inputClassName="h-10 text-xs border-slate-200 focus:ring-teal-600 focus:border-teal-600 rounded-full"
+                                    />
+                                ) : null}
                                 <InputField
                                     name="email"
                                     type="email"
@@ -187,7 +223,8 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                         type="tel"
                                         name="phone"
                                         defaultValue={form?.phone || ''}
-                                        placeholder="Mobile number"
+                                        placeholder={isSalesRep ? 'Mobile number (required)' : 'Mobile number'}
+                                        required={isSalesRep}
                                         autoComplete="off"
                                         className="mt-2 w-full h-10 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600"
                                     />
@@ -246,7 +283,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
                                 {passwordMatchMessage ? (
                                     <p className={`${passwordMatchMessage.className.replace('text-emerald-300', 'text-emerald-600').replace('text-rose-300', 'text-rose-600')} md:col-span-2`}>{passwordMatchMessage.text}</p>
                                 ) : null}
-                                <div className="md:col-span-2 flex flex-col md:flex-row gap-4 items-start w-full">
+                                <div className={`md:col-span-2 flex flex-col md:flex-row gap-4 items-start w-full ${isSalesRep ? 'hidden' : ''}`}>
                                     <div className="w-full md:w-[20%]">
                                         <SelectField
                                             label="Currency"
@@ -280,7 +317,7 @@ export default function Register({ form = {}, routes = {}, recaptcha = {} }) {
 
                             <div className="pt-2 flex justify-center">
                                 <SubmitButton className="h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg active:scale-[0.98] max-w-xs">
-                                    Create account
+                                    {isSalesRep ? 'Apply as sales representative' : 'Create account'}
                                 </SubmitButton>
                             </div>
                         </form>

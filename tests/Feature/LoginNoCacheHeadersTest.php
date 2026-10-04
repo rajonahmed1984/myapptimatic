@@ -19,7 +19,6 @@ class LoginNoCacheHeadersTest extends TestCase
             ['login', 'login.attempt'],
             ['admin.login', 'admin.login.attempt'],
             ['employee.login', 'employee.login.attempt'],
-            ['sales.login', 'sales.login.attempt'],
             ['support.login', 'support.login.attempt'],
         ];
     }

@@ -1,5 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
+
+/* ─── Referral link ────────────────────────────────────────────────── */
+
+function ReferralCard({ referral }) {
+    const [copied, setCopied] = useState(false);
+
+    if (!referral?.url) {
+        return null;
+    }
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(referral.url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            setCopied(false);
+        }
+    };
+
+    return (
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-teal-700">Your referral link</div>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                        Customers who sign up through this link are assigned to you, and you earn commission on what they pay.
+                    </p>
+                    <div className="mt-2 break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800">{referral.url}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                    <div className="text-right">
+                        <div className="text-lg font-bold text-slate-900">{referral.customers_count ?? 0}</div>
+                        <div className="text-[11px] text-slate-500">customers referred</div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={copy}
+                        className="rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-500 active:scale-95"
+                    >
+                        {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 /* ─── Tiny UI Helpers ──────────────────────────────────────────────── */
 
@@ -253,6 +300,7 @@ function FinancialSummaryCard({ balance = {}, earnedThisMonth = 0, paidThisMonth
 
 export default function Index({
     rep = {},
+    referral = null,
     balance = {},
     earned_this_month = 0,
     paid_this_month = 0,
@@ -320,6 +368,8 @@ export default function Index({
                         </div>
                     </div>
                 </div>
+
+                <ReferralCard referral={referral} />
 
                 {/* ── Payable Status Alert Banner ── */}
                 <PayableStatusBanner

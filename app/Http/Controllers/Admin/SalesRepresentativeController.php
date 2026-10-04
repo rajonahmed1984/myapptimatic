@@ -64,7 +64,10 @@ class SalesRepresentativeController extends Controller
                 },
                 'projects',
                 'maintenances',
+                'referredCustomers',
             ])
+            // Sign-ups waiting for approval come first.
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->paginate(30)
             ->withQueryString();
@@ -134,7 +137,7 @@ class SalesRepresentativeController extends Controller
             ],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'status' => ['required', Rule::in(SalesRepresentative::STATUSES)],
             'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'user_password_confirmation' => ['nullable', 'string'],
             'project_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -245,7 +248,7 @@ class SalesRepresentativeController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'status' => ['required', Rule::in(SalesRepresentative::STATUSES)],
             'project_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'subscription_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'user_password' => ['nullable', 'string', 'min:8', 'confirmed'],
@@ -686,6 +689,10 @@ class SalesRepresentativeController extends Controller
                 'phone' => $salesRep->phone,
                 'status' => $salesRep->status,
                 'status_label' => ucfirst((string) $salesRep->status),
+                'is_pending' => $salesRep->isPending(),
+                'referral_code' => (string) $salesRep->referral_code,
+                'referral_url' => $salesRep->referral_code ? $salesRep->referralUrl() : null,
+                'referred_customers_count' => $salesRep->referredCustomers()->count(),
                 'project_commission_percentage' => $salesRep->project_commission_percentage,
                 'subscription_commission_percentage' => $salesRep->subscription_commission_percentage,
                 'user_name' => $salesRep->user?->name,
@@ -941,6 +948,7 @@ class SalesRepresentativeController extends Controller
                 'index' => route('admin.sales-reps.index'),
                 'edit' => route('admin.sales-reps.edit', $salesRep),
                 'impersonate' => route('admin.sales-reps.impersonate', $salesRep),
+                'approve' => route('admin.sales-reps.approve', $salesRep),
                 'advance_payment' => route('admin.sales-reps.advance-payment', $salesRep),
                 'show_tab' => route('admin.sales-reps.show', ['sales_rep' => $salesRep->id]),
                 'commission_payout_create' => route('admin.commission-payouts.create', ['sales_rep_id' => $salesRep->id]),
@@ -1153,6 +1161,47 @@ class SalesRepresentativeController extends Controller
         }
 
         return back()->with('status', 'Advance payment recorded.');
+    }
+
+    /**
+     * Approve a rep who signed up on the shared registration page: they can
+     * sign in from then on and their referral link starts crediting them.
+     */
+    public function approve(Request $request, SalesRepresentative $salesRep, SalesRepNotificationService $notifications)
+    {
+        if (! $salesRep->isPending()) {
+            return back()->with('error', 'Only a pending sales representative can be approved.');
+        }
+
+        $data = $request->validate([
+            'subscription_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        $updates = ['status' => 'active'];
+        if (isset($data['subscription_commission_percentage']) && $data['subscription_commission_percentage'] !== '') {
+            $updates['subscription_commission_percentage'] = $data['subscription_commission_percentage'];
+        }
+
+        $salesRep->update($updates);
+
+        \App\Models\StatusAuditLog::logChange(
+            SalesRepresentative::class,
+            $salesRep->id,
+            SalesRepresentative::STATUS_PENDING,
+            'active',
+            'admin_approved',
+            $request->user()?->id
+        );
+
+        $notifications->sendAccountApproved($salesRep);
+
+        $message = $salesRep->name.' approved. They can now sign in, and a welcome email with their referral link was sent.';
+
+        if ($salesRep->subscription_commission_percentage === null) {
+            $message .= ' No Subscriptions % is set yet, so their referrals earn no commission until you set it in Edit.';
+        }
+
+        return back()->with('status', $message);
     }
 
     public function impersonate(Request $request, SalesRepresentative $salesRep)
@@ -1380,8 +1429,10 @@ class SalesRepresentativeController extends Controller
                 'total_paid' => number_format((float) ($repTotals->total_paid ?? 0), 2),
                 'status' => $rep->status,
                 'status_label' => ucfirst((string) $rep->status),
+                'referred_customers_count' => (int) ($rep->referred_customers_count ?? 0),
                 'routes' => [
                     'show' => route('admin.sales-reps.show', $rep),
+                    'approve' => $rep->isPending() ? route('admin.sales-reps.approve', $rep) : null,
                 ],
             ];
         })->values()->all();

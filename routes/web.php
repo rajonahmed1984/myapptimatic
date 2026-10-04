@@ -2,9 +2,6 @@
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\AffiliateCommissionController;
-use App\Http\Controllers\Admin\AffiliateController as AdminAffiliateController;
-use App\Http\Controllers\Admin\AffiliatePayoutController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -59,7 +56,6 @@ use App\Http\Controllers\Employee\TimesheetController as EmployeeTimesheetContro
 use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\Employee\PayrollController as EmployeePayrollController;
 use App\Http\Controllers\Employee\WorkSessionController as EmployeeWorkSessionController;
-use App\Http\Controllers\Client\AffiliateController as ClientAffiliateController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\ChatController as ClientChatController;
 use App\Http\Controllers\Client\TasksController as ClientTasksController;
@@ -127,7 +123,7 @@ Route::get('/__ui/react-sandbox', function () {
 
 Route::redirect('/admin', '/admin/login');
 Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
-Route::get('/sales', fn () => redirect()->route('sales.login'))->name('sales.home');
+Route::get('/sales', fn () => redirect()->route('login'))->name('sales.home');
 Route::get('/support', fn () => redirect()->route('support.login'))->name('support.home');
 Route::get('media/avatars/{path}', [PublicMediaController::class, 'avatar'])
     ->where('path', '.*')
@@ -221,10 +217,6 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web',
     Route::post('/project-login', [ProjectClientAuthController::class, 'login'])
         ->middleware(['throttle:login', 'login.trace'])
         ->name('project-client.login.attempt');
-    Route::get('/register', [AuthController::class, 'showRegister'])
-        ->middleware(HandleInertiaRequests::class)
-        ->name('register');
-    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
     Route::get('/admin/login', [PortalLoginController::class, 'show'])
         ->middleware(HandleInertiaRequests::class)
         ->defaults('portal', 'admin')
@@ -245,6 +237,16 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web',
         ->middleware(HandleInertiaRequests::class)
         ->name('password.reset');
     Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+});
+
+// One sign-up page for customers and sales reps. It is outside the guest group
+// so a signed-in customer can still apply as a sales rep; AuthController sends
+// anyone else who is signed in to their portal.
+Route::middleware(['nocache'])->group(function () {
+    Route::get('/register', [AuthController::class, 'showRegister'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
 Route::middleware(['nocache'])->group(function () {
@@ -555,33 +557,11 @@ Route::middleware([
         Route::post('/support-tickets/{ticket}/reply', [ClientSupportTicketController::class, 'reply'])->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [ClientSupportTicketController::class, 'updateStatus'])->name('support-tickets.status');
         
-        // Affiliate routes
-        Route::get('/affiliates', [ClientAffiliateController::class, 'index'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
+        // Affiliates became sales representatives: earning on referrals now
+        // means a sales rep account, opened from the shared sign-up page.
+        Route::get('/affiliates/{any?}', fn () => redirect()->route('register', ['as' => 'sales_rep']))
+            ->where('any', '.*')
             ->name('affiliates.index');
-        Route::get('/affiliates/apply', [ClientAffiliateController::class, 'apply'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
-            ->name('affiliates.apply');
-        Route::post('/affiliates/apply', [ClientAffiliateController::class, 'storeApplication'])->middleware('project.financial')->name('affiliates.apply.store');
-        Route::get('/affiliates/referrals', [ClientAffiliateController::class, 'referrals'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
-            ->name('affiliates.referrals');
-        Route::get('/affiliates/commissions', [ClientAffiliateController::class, 'commissions'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
-            ->name('affiliates.commissions');
-        Route::get('/affiliates/payouts', [ClientAffiliateController::class, 'payouts'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
-            ->name('affiliates.payouts');
-        Route::get('/affiliates/settings', [ClientAffiliateController::class, 'settings'])
-            ->middleware('project.financial')
-            ->middleware(HandleInertiaRequests::class)
-            ->name('affiliates.settings');
-        Route::put('/affiliates/settings', [ClientAffiliateController::class, 'updateSettings'])->middleware('project.financial')->name('affiliates.settings.update');
     });
 
 

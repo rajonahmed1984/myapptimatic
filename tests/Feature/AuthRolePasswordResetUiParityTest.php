@@ -12,7 +12,7 @@ class AuthRolePasswordResetUiParityTest extends TestCase
     {
         $cases = [
             ['employee.password.request', 'employee', route('employee.password.email', [], false), route('employee.login', [], false)],
-            ['sales.password.request', 'sales', route('sales.password.email', [], false), route('sales.login', [], false)],
+            ['sales.password.request', 'sales', route('sales.password.email', [], false), route('login', [], false)],
             ['support.password.request', 'support', route('support.password.email', [], false), route('support.login', [], false)],
         ];
 
@@ -37,7 +37,7 @@ class AuthRolePasswordResetUiParityTest extends TestCase
     {
         $cases = [
             ['employee.password.reset', 'employee', route('employee.password.update', [], false), route('employee.login', [], false)],
-            ['sales.password.reset', 'sales', route('sales.password.update', [], false), route('sales.login', [], false)],
+            ['sales.password.reset', 'sales', route('sales.password.update', [], false), route('login', [], false)],
             ['support.password.reset', 'support', route('support.password.update', [], false), route('support.login', [], false)],
         ];
 

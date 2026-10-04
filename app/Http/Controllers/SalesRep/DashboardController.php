@@ -69,6 +69,11 @@ class DashboardController extends Controller
                 'name' => $rep->name,
                 'email' => $rep->email,
             ],
+            'referral' => [
+                'code' => (string) $rep->referral_code,
+                'url' => $rep->referral_code ? $rep->referralUrl() : null,
+                'customers_count' => $rep->referredCustomers()->count(),
+            ],
             'currency' => $currency,
             'balance' => $balance,
             'earned_this_month' => (float) $earnedThisMonth,

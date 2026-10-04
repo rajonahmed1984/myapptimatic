@@ -57,9 +57,15 @@ class LoginService
         ]);
 
         $remember = (bool) $request->boolean('remember');
-        $guard = Portal::guard($portal);
 
+        // The token was issued for the form the visitor actually submitted.
         $this->recaptcha->assertValid($request, Portal::recaptchaAction($portal));
+
+        // Customers and sales reps share /login: a sales rep account signs in
+        // to the sales portal from there.
+        $portal = $this->portalForAccount($portal, $credentials['email']);
+        Portal::setPortal($request, $portal);
+        $guard = Portal::guard($portal);
 
         $authGuard = Auth::guard($guard);
         if (! $authGuard->attempt($credentials, $remember)) {
@@ -161,6 +167,20 @@ class LoginService
         return implode('|', ['login', $portal, $guard, $normalizedEmail, $ip]);
     }
 
+    /**
+     * The portal an account signs in to from the shared customer login.
+     */
+    private function portalForAccount(string $portal, string $email): string
+    {
+        if ($portal !== 'web') {
+            return $portal;
+        }
+
+        $role = User::query()->where('email', $email)->value('role');
+
+        return $role === Role::SALES ? 'sales' : $portal;
+    }
+
     private function validatePortalAccess(string $portal, mixed $user): ?string
     {
         if (! $user instanceof User) {
@@ -203,10 +223,13 @@ class LoginService
 
             $rep = SalesRepresentative::query()
                 ->where('user_id', $user->id)
-                ->where('status', 'active')
                 ->first();
 
-            if (! $rep) {
+            if ($rep?->isPending()) {
+                return 'Your sales representative account is waiting for admin approval. We will email you once it is approved.';
+            }
+
+            if (! $rep || $rep->status !== 'active') {
                 return 'Access restricted for this account.';
             }
         }

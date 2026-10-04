@@ -44,7 +44,7 @@ class AuthHardCutoverTest extends TestCase
             [$client, 'login', 'login.attempt'],
             [$admin, 'admin.login', 'admin.login.attempt'],
             [$employee, 'employee.login', 'employee.login.attempt'],
-            [$sales, 'sales.login', 'sales.login.attempt'],
+            [$sales, 'login', 'login.attempt'],
             [$support, 'support.login', 'support.login.attempt'],
         ];
 
@@ -80,7 +80,7 @@ class AuthHardCutoverTest extends TestCase
             [$client, 'login.attempt', 'client.dashboard', 'web', 'web'],
             [$admin, 'admin.login.attempt', 'admin.dashboard', 'web', 'admin'],
             [$employee, 'employee.login.attempt', 'employee.dashboard', 'employee', 'employee'],
-            [$sales, 'sales.login.attempt', 'rep.dashboard', 'sales', 'sales'],
+            [$sales, 'login.attempt', 'rep.dashboard', 'sales', 'sales'],
             [$support, 'support.login.attempt', 'support.dashboard', 'support', 'support'],
         ];
 
@@ -114,7 +114,7 @@ class AuthHardCutoverTest extends TestCase
             ['login', $client, 'web', 'login'],
             ['admin.login', $admin, 'web', 'admin.login'],
             ['employee.login', $employee, 'employee', 'employee.login'],
-            ['sales.login', $sales, 'sales', 'sales.login'],
+            ['login', $sales, 'sales', 'login'],
             ['support.login', $support, 'support', 'support.login'],
         ];
 
@@ -182,7 +182,7 @@ class AuthHardCutoverTest extends TestCase
             ['login', 'login.attempt', $support->email],
             ['admin.login', 'admin.login.attempt', $support->email],
             ['support.login', 'support.login.attempt', $sales->email],
-            ['sales.login', 'sales.login.attempt', $employee->email],
+            ['login', 'login.attempt', $employee->email],
         ];
 
         foreach ($cases as [$loginRoute, $attemptRoute, $email]) {

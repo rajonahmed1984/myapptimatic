@@ -230,9 +230,6 @@ export default function AdminLayout({ children, title, pageHeading }) {
                 <NavLink href="/admin/sales-reps" active={isActiveRoute(currentUrl, '/admin/sales-reps*')}>
                     Sales Representatives
                 </NavLink>
-                <NavLink href="/admin/affiliates" active={isActiveRoute(currentUrl, '/admin/affiliates*')}>
-                    Affiliates
-                </NavLink>
             </div>
 
             <div className="space-y-2">

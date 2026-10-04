@@ -74,7 +74,7 @@ class LoginSessionPersistenceTest extends TestCase
             [$client, 'login', 'login.attempt'],
             [$admin, 'admin.login', 'admin.login.attempt'],
             [$employeeUser, 'employee.login', 'employee.login.attempt'],
-            [$salesUser, 'sales.login', 'sales.login.attempt'],
+            [$salesUser, 'login', 'login.attempt'],
             [$supportUser, 'support.login', 'support.login.attempt'],
         ];
 
@@ -164,7 +164,8 @@ class LoginSessionPersistenceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->post(route('sales.login.attempt'), [
+        // Sales reps sign in on the shared customer login.
+        $response = $this->post(route('login.attempt'), [
             'email' => $user->email,
             'password' => 'password123',
         ]);
@@ -172,7 +173,8 @@ class LoginSessionPersistenceTest extends TestCase
         $response->assertRedirect(route('rep.dashboard'));
         $response->assertCookie(config('session.cookie'));
         $this->assertAuthenticatedAs($user, 'sales');
-        $this->get(route('sales.login'))->assertRedirect(route('rep.dashboard'));
+        $this->assertGuest('web');
+        $this->get(route('login'))->assertRedirect(route('rep.dashboard'));
     }
 
     public function test_successful_login_persists_session_for_support_guard(): void

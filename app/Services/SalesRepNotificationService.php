@@ -97,6 +97,27 @@ class SalesRepNotificationService
         }
     }
 
+    /**
+     * Tell a self-registered rep that an admin approved the account, with the
+     * referral link they can start sharing.
+     */
+    public function sendAccountApproved(SalesRepresentative $rep): void
+    {
+        if (! $rep->email) {
+            return;
+        }
+
+        $companyName = (string) Setting::getValue('company_name', config('app.name'));
+        $subject = 'Your sales representative account is approved';
+        $body = "Hi {$rep->name},\n\n"
+            ."Your sales representative account with {$companyName} is approved. Sign in with your email and password at:\n"
+            .UrlResolver::portalUrl()."/login\n\n"
+            ."Share your referral link. Customers who sign up through it are assigned to you, and you earn commission on what they pay:\n"
+            .$rep->referralUrl();
+
+        $this->sendGeneric($rep->email, $subject, $this->formatEmailBody($body), $companyName);
+    }
+
     public function sendCommissionPayoutNotification(CommissionPayout $payout, string $event = 'created'): void
     {
         $event = in_array($event, ['created', 'paid', 'reversed'], true) ? $event : 'created';
@@ -244,7 +265,7 @@ class SalesRepNotificationService
                     'companyName' => $companyName,
                     'logoUrl' => Branding::url(Setting::getValue('company_logo_path')),
                     'portalUrl' => UrlResolver::portalUrl(),
-                    'portalLoginUrl' => UrlResolver::portalUrl().'/sales/login',
+                    'portalLoginUrl' => UrlResolver::portalUrl().'/login',
                     'portalLoginLabel' => 'log in to the sales area',
                     'bodyHtml' => new HtmlString($bodyHtml),
                 ],

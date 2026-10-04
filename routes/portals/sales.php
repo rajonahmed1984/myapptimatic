@@ -18,11 +18,9 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':sales
     ->prefix('sales')
     ->name('sales.')
     ->group(function () {
-        Route::get('/', fn () => redirect()->route('sales.login'))->name('home');
-        Route::get('/login', [PortalLoginController::class, 'show'])
-            ->middleware(HandleInertiaRequests::class)
-            ->defaults('portal', 'sales')
-            ->name('login');
+        Route::get('/', fn () => redirect()->route('login'))->name('home');
+        // Sales reps sign in on the shared /login page; this keeps old links working.
+        Route::get('/login', fn () => redirect()->route('login'))->name('login');
         Route::post('/login', [PortalLoginController::class, 'login'])
             ->defaults('portal', 'sales')
             ->middleware(['throttle:login', 'login.trace'])

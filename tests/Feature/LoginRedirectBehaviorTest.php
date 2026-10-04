@@ -63,12 +63,13 @@ class LoginRedirectBehaviorTest extends TestCase
             'password' => 'correct-password',
         ]);
 
-        $response = $this->from(route('sales.login'))->post(route('sales.login.attempt'), [
+        // Sales reps sign in on the shared customer login.
+        $response = $this->from(route('login'))->post(route('login.attempt'), [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
-        $response->assertRedirect(route('sales.login'));
+        $response->assertRedirect(route('login'));
         $response->assertSessionHasErrors('email');
     }
 
@@ -118,21 +119,21 @@ class LoginRedirectBehaviorTest extends TestCase
         $response->assertRedirect(route('employee.login'));
     }
 
-    public function test_guest_accessing_sales_route_redirects_to_sales_login(): void
+    public function test_guest_accessing_sales_route_redirects_to_shared_login(): void
     {
         $response = $this->get(route('rep.dashboard'));
 
-        $response->assertRedirect(route('sales.login'));
+        $response->assertRedirect(route('login'));
     }
 
-    public function test_sales_login_csrf_mismatch_redirects_to_sales_login(): void
+    public function test_sales_login_csrf_mismatch_redirects_to_shared_login(): void
     {
         $response = $this->withMiddleware()->post(route('sales.login.attempt'), [
             'email' => 'nobody@example.com',
             'password' => 'wrong-password',
         ]);
 
-        $response->assertRedirect(route('sales.login'));
+        $response->assertRedirect(route('login'));
     }
 
     public function test_authenticated_client_can_open_admin_login_without_forced_redirect(): void
