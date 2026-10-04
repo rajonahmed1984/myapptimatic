@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 
@@ -22,6 +22,200 @@ const Info = ({ label, value }) => (
         <div className="mt-1 text-sm text-slate-800">{value || '--'}</div>
     </div>
 );
+
+const money = (value, currency) => {
+    const amount = Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return currency ? `${currency} ${amount}` : amount;
+};
+
+const TIMING_OPTIONS = [
+    {
+        value: 'next_renewal',
+        label: 'At next renewal',
+        hint: 'Everything already invoiced stays. The new plan starts on the first day not yet billed.',
+    },
+    {
+        value: 'now',
+        label: 'Now, with credit',
+        hint: 'The new term starts today and is invoiced now. Unused paid days are credited against it.',
+    },
+];
+
+function ChangePlanCard({ plans, currentInterval, routes, csrf }) {
+    const [planId, setPlanId] = useState('');
+    const [timing, setTiming] = useState('next_renewal');
+    const [amount, setAmount] = useState('');
+    const [preview, setPreview] = useState(null);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const selectedPlan = plans.find((plan) => String(plan.id) === String(planId));
+    const intervalChanges = selectedPlan && currentInterval && selectedPlan.interval !== currentInterval;
+
+    useEffect(() => {
+        if (!planId || !routes?.change_plan_preview) {
+            setPreview(null);
+            setError('');
+            return undefined;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const params = new URLSearchParams({ plan_id: planId, timing });
+                if (amount !== '') params.set('subscription_amount', amount);
+                const response = await fetch(`${routes.change_plan_preview}?${params.toString()}`, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: controller.signal,
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const firstError = payload?.errors ? Object.values(payload.errors)[0]?.[0] : null;
+                    throw new Error(firstError || payload?.message || 'Could not work out the change.');
+                }
+                setPreview(payload?.data || null);
+            } catch (exception) {
+                if (exception?.name !== 'AbortError') {
+                    setPreview(null);
+                    setError(exception?.message || 'Could not work out the change.');
+                }
+            } finally {
+                setLoading(false);
+            }
+        }, 250);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timer);
+        };
+    }, [planId, timing, amount, routes?.change_plan_preview]);
+
+    const blocked = Boolean(preview?.blocked_reason);
+    const currency = preview?.currency || '';
+
+    return (
+        <div className="card p-6">
+            <div className="mb-2 text-sm font-semibold text-slate-800">Change Plan</div>
+            <p className="mb-4 text-xs text-slate-500">
+                Switch this subscription to another plan, including between monthly and yearly. The billing window and next invoice are re-fitted to the new plan.
+            </p>
+            <form action={routes?.change_plan} method="POST" data-native="true" className="space-y-3">
+                <input type="hidden" name="_token" value={csrf} />
+                <input type="hidden" name="_method" value="PUT" />
+                <select
+                    name="plan_id"
+                    required
+                    value={planId}
+                    onChange={(event) => setPlanId(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                    <option value="" disabled>Select new plan...</option>
+                    {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>{plan.label || plan.name}</option>
+                    ))}
+                </select>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="subscription_amount"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    placeholder="Override amount (optional)"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+
+                <fieldset className="space-y-2">
+                    <legend className="text-xs font-semibold text-slate-600">
+                        When should it take effect?
+                        {intervalChanges ? (
+                            <span className="ml-1 font-normal text-slate-500">({currentInterval} → {selectedPlan.interval})</span>
+                        ) : null}
+                    </legend>
+                    {TIMING_OPTIONS.map((option) => (
+                        <label key={option.value} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                            <input
+                                type="radio"
+                                name="timing"
+                                value={option.value}
+                                checked={timing === option.value}
+                                onChange={() => setTiming(option.value)}
+                                className="mt-1"
+                            />
+                            <span>
+                                <span className="font-medium text-slate-800">{option.label}</span>
+                                <span className="block text-xs text-slate-500">{option.hint}</span>
+                            </span>
+                        </label>
+                    ))}
+                </fieldset>
+
+                {loading ? <div className="text-xs text-slate-500">Working out the change...</div> : null}
+                {error ? <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div> : null}
+
+                {preview && !loading ? (
+                    <div className={`rounded-lg border px-3 py-3 text-xs ${blocked ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                        {blocked ? (
+                            <div>{preview.blocked_reason}</div>
+                        ) : (
+                            <div className="space-y-1">
+                                <div className="flex justify-between gap-3">
+                                    <span>New amount</span>
+                                    <span className="font-semibold">{money(preview.new_amount, currency)} / {preview.new_interval}</span>
+                                </div>
+                                <div className="flex justify-between gap-3">
+                                    <span>New term</span>
+                                    <span className="font-semibold">{preview.term_start} → {preview.term_end}</span>
+                                </div>
+                                <div className="flex justify-between gap-3">
+                                    <span>First invoice</span>
+                                    <span className="font-semibold">{money(preview.first_invoice_total, currency)}</span>
+                                </div>
+                                {preview.credit > 0 ? (
+                                    <>
+                                        <div className="flex justify-between gap-3 text-emerald-700">
+                                            <span>Credit for unused paid time</span>
+                                            <span className="font-semibold">- {money(preview.credit, currency)}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3 border-t border-slate-200 pt-1">
+                                            <span>To pay now</span>
+                                            <span className="font-semibold">{money(Math.max(0, preview.first_invoice_total - preview.credit), currency)}</span>
+                                        </div>
+                                    </>
+                                ) : null}
+                                <div className="flex justify-between gap-3">
+                                    <span>{preview.timing === 'now' ? 'Invoice after that' : 'Next invoice'}</span>
+                                    <span className="font-semibold">{preview.next_invoice_at}</span>
+                                </div>
+                                {(preview.notes || []).map((note) => (
+                                    <div key={note} className="pt-1 text-slate-500">{note}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : null}
+
+                <button
+                    type="submit"
+                    disabled={!planId || blocked || loading}
+                    className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={(event) => {
+                        const message = timing === 'now'
+                            ? 'Change plan now? An invoice will be raised today.'
+                            : 'Change plan from the next renewal?';
+                        if (!confirm(message)) {
+                            event.preventDefault();
+                        }
+                    }}
+                >
+                    Change Plan
+                </button>
+            </form>
+        </div>
+    );
+}
 
 export default function Show({
     pageTitle = 'Subscription Details',
@@ -143,46 +337,12 @@ export default function Show({
                     </form>
                 </div>
 
-                <div className="card p-6">
-                    <div className="mb-2 text-sm font-semibold text-slate-800">Change Plan</div>
-                    <p className="mb-4 text-xs text-slate-500">
-                        Switch this subscription to a different plan. The subscription amount updates to the new plan's price unless overridden below.
-                    </p>
-                    <form action={routes?.change_plan} method="POST" data-native="true" className="space-y-3">
-                        <input type="hidden" name="_token" value={csrf} />
-                        <input type="hidden" name="_method" value="PUT" />
-                        <select
-                            name="plan_id"
-                            required
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                            defaultValue=""
-                        >
-                            <option value="" disabled>Select new plan...</option>
-                            {plans.map((plan) => (
-                                <option key={plan.id} value={plan.id}>{plan.name}</option>
-                            ))}
-                        </select>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            name="subscription_amount"
-                            placeholder="Override amount (optional)"
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        <button
-                            type="submit"
-                            className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
-                            onClick={(e) => {
-                                if (!confirm('Change this subscription to the selected plan?')) {
-                                    e.preventDefault();
-                                }
-                            }}
-                        >
-                            Change Plan
-                        </button>
-                    </form>
-                </div>
+                <ChangePlanCard
+                    plans={plans}
+                    currentInterval={subscription?.plan_interval_value}
+                    routes={routes}
+                    csrf={csrf}
+                />
             </div>
 
             <div className="mt-6 card p-6">

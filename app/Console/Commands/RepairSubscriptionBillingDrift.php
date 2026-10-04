@@ -31,7 +31,8 @@ class RepairSubscriptionBillingDrift extends Command
     protected $signature = 'subscriptions:repair-billing-drift
                             {--apply : Write the next_invoice_at corrections}
                             {--shorten-licenses : With --apply, also pull over-extended license expiry dates back}
-                            {--enable-auto-renew= : With --apply, comma-separated subscription IDs to switch auto-renew back on}';
+                            {--enable-auto-renew= : With --apply, comma-separated subscription IDs to switch auto-renew back on}
+                            {--realign= : With --apply, comma-separated subscription IDs (from the review list) whose billing window to re-fit to their plan from the first unbilled day}';
 
     protected $description = 'Report and repair renewal dates, license expiry and auto-renew left wrong by earlier billing bugs.';
 
@@ -50,6 +51,7 @@ class RepairSubscriptionBillingDrift extends Command
         $this->info($apply ? 'Applying repairs...' : 'Dry run — nothing will be written. Re-run with --apply to fix.');
 
         $renewals = $this->repairRenewalDates($apply, $today);
+        $this->realignWindows($apply, $today);
         $licenses = $this->repairLicenseExpiry($apply && (bool) $this->option('shorten-licenses'));
         $autoRenew = $this->repairAutoRenew($apply);
 
@@ -162,6 +164,60 @@ class RepairSubscriptionBillingDrift extends Command
         }
 
         return $count;
+    }
+
+    /**
+     * Re-fit the windows an admin picked from the review list, the same way a
+     * plan change "at next renewal" would: the new term starts on the first
+     * unbilled day and nothing already invoiced changes.
+     */
+    private function realignWindows(bool $apply, Carbon $today): void
+    {
+        $ids = collect(explode(',', (string) $this->option('realign')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $this->newLine();
+        $this->line('<comment>Re-fit billing windows</comment>');
+
+        $planChanges = app(\App\Services\SubscriptionPlanChangeService::class);
+
+        foreach (Subscription::with('plan')->whereIn('id', $ids)->orderBy('id')->get() as $subscription) {
+            [$start, $end] = $this->billing->termWindow((string) $subscription->plan->interval, $subscription->current_period_start->copy());
+            $nextInvoiceAt = $this->billing->nextInvoiceAt($start, $end, $today, (string) $subscription->plan->interval);
+
+            $this->line(sprintf(
+                '  subscription #%d (%s): window %s..%s → %s..%s, next_invoice_at %s → %s',
+                $subscription->id,
+                $subscription->plan->interval,
+                $subscription->current_period_start->toDateString(),
+                $subscription->current_period_end->toDateString(),
+                $start->toDateString(),
+                $end->toDateString(),
+                $subscription->next_invoice_at?->toDateString() ?? '--',
+                $nextInvoiceAt->toDateString()
+            ));
+
+            if ($apply) {
+                $before = $subscription->only(['current_period_start', 'current_period_end', 'next_invoice_at']);
+                $after = $planChanges->realignWindow($subscription, $today);
+
+                StatusAuditLog::logChange(
+                    Subscription::class,
+                    $subscription->id,
+                    'window:'.Carbon::parse($before['current_period_start'])->toDateString(),
+                    'window:'.$after['term_start'],
+                    'billing_window_realign',
+                    null,
+                    ['before' => array_map(fn ($date) => $date ? Carbon::parse($date)->toDateString() : null, $before), 'after' => $after]
+                );
+            }
+        }
     }
 
     /**

@@ -56,11 +56,13 @@ class BillingService
             return null;
         }
 
-        $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
+        $subtotal = $this->periodSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $dueDays = (int) Setting::getValue('invoice_due_days');
         $currency = (string) Setting::getValue('currency');
         if ($periodStart->day === 1) {
-            $dueDate = $periodStart->copy();
+            // Due on the 1st, but never before the invoice exists: a term that
+            // is billed late is due the day it is issued.
+            $dueDate = $periodStart->greaterThan($issueDate) ? $periodStart->copy() : $issueDate->copy();
         } else {
             $dueDate = $this->resolveDueDate($subscription, $issueDate, $plan->interval, $dueDays);
         }
@@ -138,7 +140,7 @@ class BillingService
             ? (float) $subscription->subscription_amount
             : (float) $plan->price;
 
-        $subtotal = $this->calculateSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
+        $subtotal = $this->periodSubtotal($plan->interval, $basePrice, $periodStart, $periodEnd);
         $currency = (string) Setting::getValue('currency');
 
         $taxData = $this->vatService->calculateTotals($subtotal, (float) $invoice->late_fee, Carbon::parse($invoice->issue_date), $invoice);
@@ -181,7 +183,11 @@ class BillingService
         return $invoice;
     }
 
-    private function calculateSubtotal(string $interval, float $price, Carbon $periodStart, Carbon $periodEnd): float
+    /**
+     * What one billing window costs: the full price, except a monthly window
+     * that starts mid-month, which is charged for the days it covers.
+     */
+    public function periodSubtotal(string $interval, float $price, Carbon $periodStart, Carbon $periodEnd): float
     {
         if ($interval !== 'monthly') {
             return round($price, 2);
@@ -226,6 +232,27 @@ class BillingService
             : $periodStart->copy()->addMonth();
 
         return [$periodStart, $periodEnd];
+    }
+
+    /**
+     * The billing window of one term of $interval that starts on $start:
+     * monthly windows run to the end of the calendar month, longer terms
+     * run a full term (ending on the same date, as nextPeriod() does).
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function termWindow(string $interval, Carbon $start): array
+    {
+        $start = $start->copy()->startOfDay();
+
+        $end = match ($interval) {
+            'monthly' => $start->copy()->endOfMonth()->startOfDay(),
+            'yearly' => $start->copy()->addYear(),
+            'quarterly' => $start->copy()->addMonths(3),
+            default => $start->copy()->addMonth(),
+        };
+
+        return [$start, $end];
     }
 
     private function nextPeriod(string $interval, Carbon $currentEnd): array

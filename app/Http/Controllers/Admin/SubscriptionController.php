@@ -14,6 +14,7 @@ use App\Services\BillingService;
 use App\Services\LicenseLifecycleService;
 use App\Services\MyBuildingProvisioner;
 use App\Services\SubscriptionCancellationService;
+use App\Services\SubscriptionPlanChangeService;
 use App\Support\AjaxResponse;
 use App\Support\PaginationPayload;
 use Carbon\Carbon;
@@ -250,6 +251,7 @@ class SubscriptionController extends Controller
                 'product_name' => (string) ($subscription->plan?->product?->name ?? '--'),
                 'plan_name' => (string) ($subscription->plan?->name ?? '--'),
                 'plan_interval' => ucfirst((string) ($subscription->plan?->interval ?? '--')),
+                'plan_interval_value' => (string) ($subscription->plan?->interval ?? ''),
                 'amount_display' => trim((string) (($amountCurrency ? $amountCurrency.' ' : '').number_format($baseAmount, 2))),
                 'sales_rep_name' => (string) ($subscription->salesRep?->name ?? '--'),
                 'sales_rep_status' => (string) ($subscription->salesRep?->status ?? '--'),
@@ -301,14 +303,28 @@ class SubscriptionController extends Controller
                 'move_owner' => route('admin.subscriptions.move-owner', $subscription),
                 'renew_now' => route('admin.subscriptions.renew-now', $subscription),
                 'change_plan' => route('admin.subscriptions.change-plan', $subscription),
+                'change_plan_preview' => route('admin.subscriptions.change-plan.preview', $subscription),
                 'transfer_store' => route('admin.subscriptions.transfers.store', $subscription),
             ],
             'transfer_ineligible_reason' => app(\App\Services\ProjectTransferService::class)->eligibilityErrorForSubscription($subscription),
             'plans' => Plan::query()
+                ->with('product:id,name')
                 ->where('is_active', true)
+                ->whereKeyNot($subscription->plan_id)
                 ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (Plan $plan) => ['id' => (string) $plan->id, 'name' => (string) $plan->name])
+                ->get(['id', 'product_id', 'name', 'interval', 'price', 'currency', 'pricing_model'])
+                ->map(fn (Plan $plan) => [
+                    'id' => (string) $plan->id,
+                    'name' => (string) $plan->name,
+                    'label' => sprintf(
+                        '%s - %s (%s, %s)',
+                        $plan->product?->name ?? '--',
+                        $plan->name,
+                        $plan->interval,
+                        number_format((float) $plan->price, 2)
+                    ),
+                    'interval' => (string) $plan->interval,
+                ])
                 ->all(),
             'customers' => Customer::query()
                 ->where('id', '!=', $subscription->customer_id)
@@ -394,24 +410,89 @@ class SubscriptionController extends Controller
             ->with('status', 'Invoice #'.($invoice->number ?: $invoice->id).' generated.');
     }
 
-    public function changePlan(Request $request, Subscription $subscription): RedirectResponse
-    {
+    public function changePlan(
+        Request $request,
+        Subscription $subscription,
+        SubscriptionPlanChangeService $planChanges
+    ): RedirectResponse {
         $this->authorize('update', $subscription);
 
-        $data = $request->validate([
-            'plan_id' => ['required', 'exists:plans,id', Rule::notIn([$subscription->plan_id])],
-            'subscription_amount' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $data = $this->validatedPlanChange($request, $subscription);
 
         if ((string) $subscription->status === 'cancelled') {
             return redirect()->route('admin.subscriptions.show', $subscription)
                 ->with('error', 'A cancelled subscription cannot change plan.');
         }
 
-        $oldPlan = $subscription->plan;
+        [$newPlan, $newAmount, $commissionAmount] = $this->resolvePlanChange($subscription, $data);
+
+        try {
+            $result = $planChanges->apply(
+                $subscription,
+                $newPlan,
+                $newAmount,
+                $commissionAmount,
+                $data['timing'],
+                $request->user()?->id
+            );
+        } catch (\RuntimeException $exception) {
+            return redirect()->route('admin.subscriptions.show', $subscription)
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('admin.subscriptions.show', $subscription)
+            ->with('status', $this->planChangeMessage($newPlan, $result));
+    }
+
+    /**
+     * What Change plan would do, for the form to show before it is submitted.
+     */
+    public function changePlanPreview(
+        Request $request,
+        Subscription $subscription,
+        SubscriptionPlanChangeService $planChanges
+    ): JsonResponse {
+        $this->authorize('update', $subscription);
+
+        $data = $this->validatedPlanChange($request, $subscription);
+        [$newPlan, $newAmount] = $this->resolvePlanChange($subscription, $data);
+
+        return response()->json([
+            'ok' => true,
+            'data' => $planChanges->preview($subscription, $newPlan, $newAmount, $data['timing']) + [
+                'currency' => (string) ($newPlan->currency ?: \App\Models\Setting::getValue('currency', '')),
+                'plan_name' => (string) $newPlan->name,
+            ],
+        ]);
+    }
+
+    /**
+     * @return array{plan_id: int, subscription_amount: mixed, timing: string}
+     */
+    private function validatedPlanChange(Request $request, Subscription $subscription): array
+    {
+        $data = $request->validate([
+            'plan_id' => ['required', 'exists:plans,id', Rule::notIn([$subscription->plan_id])],
+            'subscription_amount' => ['nullable', 'numeric', 'min:0'],
+            'timing' => ['nullable', Rule::in(SubscriptionPlanChangeService::TIMINGS)],
+        ]);
+
+        $data['timing'] = $data['timing'] ?? SubscriptionPlanChangeService::TIMING_NEXT_RENEWAL;
+
+        return $data;
+    }
+
+    /**
+     * The new plan, the amount it bills, and the sales rep commission kept at
+     * the same percentage of that amount.
+     *
+     * @return array{0: Plan, 1: float, 2: float|null}
+     */
+    private function resolvePlanChange(Subscription $subscription, array $data): array
+    {
+        $oldAmount = (float) ($subscription->subscription_amount ?? $subscription->plan?->price ?? 0);
         $newPlan = Plan::with('product')->findOrFail($data['plan_id']);
-        $oldAmount = (float) ($subscription->subscription_amount ?? $oldPlan?->price ?? 0);
-        $amountGiven = array_key_exists('subscription_amount', $data) && $data['subscription_amount'] !== null;
+        $amountGiven = isset($data['subscription_amount']) && $data['subscription_amount'] !== '';
 
         if ($newPlan->isPerFlat()) {
             // A per-flat price is a rate, not the subscription amount. Use the
@@ -431,52 +512,46 @@ class SubscriptionController extends Controller
             $newAmount = $amountGiven ? (float) $data['subscription_amount'] : (float) $newPlan->price;
         }
 
-        // Keep the sales rep on the same percentage of the new amount.
-        $commissionAmount = $subscription->sales_rep_commission_amount !== null && $oldAmount > 0
-            ? round(((float) $subscription->sales_rep_commission_amount / $oldAmount) * $newAmount, 2)
-            : $subscription->sales_rep_commission_amount;
+        $currentCommission = $subscription->sales_rep_commission_amount !== null
+            ? (float) $subscription->sales_rep_commission_amount
+            : null;
+        $commissionAmount = $currentCommission !== null && $oldAmount > 0
+            ? round(($currentCommission / $oldAmount) * $newAmount, 2)
+            : $currentCommission;
 
-        $licensesRepointed = \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $newPlan, $newAmount, $commissionAmount) {
-            $subscription->update([
-                'plan_id' => $newPlan->id,
-                'subscription_amount' => $newAmount,
-                'sales_rep_commission_amount' => $commissionAmount,
-            ]);
+        return [$newPlan, $newAmount, $commissionAmount];
+    }
 
-            // Licenses follow the product the subscription now sells, as they
-            // do when a license is moved onto another subscription.
-            if (! $newPlan->product_id) {
-                return 0;
-            }
+    private function planChangeMessage(Plan $newPlan, array $result): string
+    {
+        $parts = [sprintf('Plan changed to %s (amount %s).', $newPlan->name, number_format((float) $result['new_amount'], 2))];
 
-            return $subscription->licenses()
-                ->where('product_id', '!=', $newPlan->product_id)
-                ->update(['product_id' => $newPlan->product_id]);
-        });
+        if ($result['invoice_id']) {
+            $parts[] = sprintf(
+                'Invoice raised for %s to %s%s.',
+                $result['term_start'],
+                $result['term_end'],
+                $result['credit'] > 0 ? ' with '.number_format((float) $result['credit'], 2).' credit for unused paid time' : ''
+            );
+        } elseif ($result['reshapes_window']) {
+            $parts[] = sprintf(
+                'New %s term %s to %s; next invoice %s.',
+                $result['new_interval'],
+                $result['term_start'],
+                $result['term_end'],
+                $result['next_invoice_at']
+            );
+        }
 
-        \App\Models\StatusAuditLog::logChange(
-            Subscription::class,
-            $subscription->id,
-            (string) ($oldPlan?->name ?? 'unknown'),
-            (string) $newPlan->name,
-            'plan_change',
-            $request->user()?->id,
-            [
-                'old_plan_id' => $oldPlan?->id,
-                'new_plan_id' => $newPlan->id,
-                'old_amount' => $oldAmount,
-                'new_amount' => $newAmount,
-                'licenses_repointed' => $licensesRepointed,
-            ]
-        );
+        if (! empty($result['cancel_invoice_ids'])) {
+            $parts[] = sprintf('%d unpaid future invoice(s) cancelled.', count($result['cancel_invoice_ids']));
+        }
 
-        return redirect()->route('admin.subscriptions.show', $subscription)
-            ->with('status', sprintf(
-                'Plan changed to %s (amount %s).%s',
-                $newPlan->name,
-                number_format($newAmount, 2),
-                $licensesRepointed > 0 ? sprintf(' %d license(s) moved to %s.', $licensesRepointed, $newPlan->product?->name ?? 'the new product') : ''
-            ));
+        if ($result['licenses_repointed'] > 0) {
+            $parts[] = sprintf('%d license(s) moved to %s.', $result['licenses_repointed'], $newPlan->product?->name ?? 'the new product');
+        }
+
+        return implode(' ', $parts);
     }
 
     public function update(Request $request, Subscription $subscription): RedirectResponse|JsonResponse
@@ -517,6 +592,19 @@ class SubscriptionController extends Controller
         }
 
         $plan = Plan::findOrFail($data['plan_id']);
+
+        // Switching billing cycle has to re-fit the billing window and settle
+        // what was already paid, which only Change plan does.
+        $currentInterval = (string) ($subscription->plan?->interval ?? '');
+        if ($currentInterval !== '' && (string) $plan->interval !== $currentInterval) {
+            throw ValidationException::withMessages([
+                'plan_id' => sprintf(
+                    'To switch from %s to %s billing, use Change plan on the subscription page.',
+                    $currentInterval,
+                    $plan->interval
+                ),
+            ]);
+        }
 
         if ($plan->isPerFlat()) {
             $data['subscription_amount'] = $this->perFlatSubscriptionAmount($plan, $data['contracted_flats'] ?? null);
