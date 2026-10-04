@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_accent">#0D9488</color>
+    <!-- Must match the channel id native.js creates and the server sends. -->
+    <string name="default_notification_channel_id">general</string>
+</resources>

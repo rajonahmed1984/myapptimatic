@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\PushDeviceController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -366,6 +367,10 @@ if (app()->environment(['local', 'testing'])) {
 Route::post('/logout', [LogoutController::class, 'logout'])
     ->name('logout')
     ->middleware('auth:web,employee,sales,support');
+Route::middleware(['auth:web,employee,sales,support', 'throttle:30,1'])->group(function () {
+    Route::post('/push/devices', [PushDeviceController::class, 'store'])->name('push-devices.store');
+    Route::delete('/push/devices', [PushDeviceController::class, 'destroy'])->name('push-devices.destroy');
+});
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')
     ->middleware('auth');

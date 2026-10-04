@@ -34,3 +34,4 @@ junit-*.xml
 *.jks
 *.keystore
 /android/keystore.properties
+/storage/app/firebase/

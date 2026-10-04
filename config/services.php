@@ -53,4 +53,14 @@ return [
         'key_id' => env('LICENSE_CERT_KEY_ID', 'v1'),
     ],
 
+    'fcm' => [
+        // Firebase service account key (Firebase console > Project settings >
+        // Service accounts > Generate new private key). Keep it out of git.
+        'credentials' => env('FIREBASE_CREDENTIALS') ?: storage_path('app/firebase/service-account.json'),
+        // Optional; read from the key file when empty.
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        // Android notification channel; must match the one native.js creates.
+        'channel_id' => 'general',
+    ],
+
 ];

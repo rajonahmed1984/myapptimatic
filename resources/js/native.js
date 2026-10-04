@@ -12,6 +12,7 @@ import { Network } from '@capacitor/network';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Keyboard } from '@capacitor/keyboard';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 // "Home" screens: the login pages and each portal's dashboard. Back on one of
 // these asks before closing the app instead of walking further into history
@@ -306,6 +307,130 @@ const bindKeyboard = () => quietly(async () => {
     });
 });
 
+// Android notification channel for pushes. Keep the id in step with
+// services.fcm.channel_id on the server and the default channel in AndroidManifest.xml.
+const PUSH_CHANNEL_ID = 'general';
+
+const readCookie = (name) => {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+
+    return match ? decodeURIComponent(match[1]) : '';
+};
+
+// The XSRF cookie always matches the live session; the meta tag can lag behind
+// a sign-in. Laravel prefers X-CSRF-TOKEN when both are sent, so send just one.
+const csrfHeaders = () => {
+    const xsrf = readCookie('XSRF-TOKEN');
+    if (xsrf) {
+        return { 'X-XSRF-TOKEN': xsrf };
+    }
+
+    return { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' };
+};
+
+const sendDeviceToken = (method, body) => fetch('/push/devices', {
+    method,
+    credentials: 'same-origin',
+    headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...csrfHeaders(),
+    },
+    body: JSON.stringify(body),
+});
+
+// A tapped notification carries the portal path it is about (an invoice, a
+// ticket); open it as a normal forward visit so back returns to where the user was.
+const openPushTarget = (url) => {
+    try {
+        const target = new URL(url, window.location.origin);
+        if (target.origin !== window.location.origin) {
+            return;
+        }
+
+        const path = `${target.pathname}${target.search}${target.hash}`;
+        if (window.__inertiaRouter) {
+            window.__inertiaRouter.visit(path);
+            return;
+        }
+
+        window.location.assign(path);
+    } catch (error) {
+        // Ignore a malformed link; the app simply stays where it is.
+    }
+};
+
+let pushUserId = null;
+let pushPermissionDenied = false;
+
+const bindPushNotifications = () => quietly(async () => {
+    await PushNotifications.addListener('registration', ({ value }) => {
+        if (value) {
+            quietly(() => sendDeviceToken('POST', { token: value, platform: Capacitor.getPlatform() }));
+        }
+    });
+
+    await PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
+        const url = notification?.data?.url;
+        if (url) {
+            openPushTarget(url);
+        }
+    });
+});
+
+// Ask for permission and hand the device token to the server, but only once
+// someone is signed in: the token is stored against that user.
+const registerForPush = () => quietly(async () => {
+    if (pushPermissionDenied) {
+        return;
+    }
+
+    if (Capacitor.getPlatform() === 'android') {
+        await quietly(() => PushNotifications.createChannel({
+            id: PUSH_CHANNEL_ID,
+            name: 'Notifications',
+            description: 'Invoices, payments and support replies',
+            importance: 4,
+            visibility: 1,
+        }));
+    }
+
+    let permission = await PushNotifications.checkPermissions();
+    if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
+        permission = await PushNotifications.requestPermissions();
+    }
+
+    if (permission.receive !== 'granted') {
+        pushPermissionDenied = true;
+        return;
+    }
+
+    await PushNotifications.register();
+});
+
+const syncPushUser = (page) => {
+    const userId = page?.props?.auth?.user?.id ?? null;
+
+    if (userId && userId !== pushUserId) {
+        pushUserId = userId;
+        registerForPush();
+        return;
+    }
+
+    if (!userId) {
+        pushUserId = null;
+    }
+};
+
+const bindPushRegistration = () => {
+    syncPushUser(readInitialPage());
+
+    document.addEventListener('inertia:navigate', (event) => {
+        syncPushUser(event?.detail?.page);
+    });
+};
+
 let initialised = false;
 
 export function initNativeShell() {
@@ -322,6 +447,8 @@ export function initNativeShell() {
     bindExternalLinks();
     bindNetworkStatus();
     bindKeyboard();
+    bindPushNotifications();
+    bindPushRegistration();
 
     if (document.readyState === 'complete') {
         hideSplashScreen();

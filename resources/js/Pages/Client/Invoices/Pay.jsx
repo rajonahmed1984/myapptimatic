@@ -37,7 +37,7 @@ export default function Pay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const initialGatewayId = selected_gateway_id
+    const initialGatewayId = selected_gateway_id && gateways.some((gateway) => String(gateway.id) === String(selected_gateway_id))
         ? String(selected_gateway_id)
         : (gateways.length > 0 ? String(gateways[0].id) : '');
     const [gatewayId, setGatewayId] = useState(initialGatewayId);
@@ -68,82 +68,151 @@ export default function Pay({
         <>
             <Head title={`Invoice #${invoice.number_display || invoice.id || ''}`} />
             <style>{`
-                * { box-sizing: border-box; }
+                .invoice-container, .invoice-container * { box-sizing: border-box; }
                 .invoice-container { width: 100%; background: #fff; padding: 10px; color: #333; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-                .invoice-container .row { display: flex; flex-wrap: wrap; margin: 0 -15px; }
-                .invoice-container .invoice-grid { display: table; width: 100%; table-layout: fixed; }
-                .invoice-container .invoice-grid > .invoice-col { display: table-cell; width: 50%; vertical-align: top; }
-                .invoice-container .invoice-col { width: 50%; padding: 0 15px; }
-                .invoice-container .invoice-col.full { width: 100%; }
-                .invoice-container .invoice-col.right { text-align: right; }
-                .invoice-container .logo-wrap { display: flex; align-items: flex-start; }
-                .invoice-container .invoice-logo-image {
-                    display: block;
-                    max-width: 340px;
-                    max-height: 92px;
-                    width: auto;
-                    height: auto;
-                    object-fit: contain;
-                }
+
+                /* header */
+                .invoice-container .inv-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+                .invoice-container .invoice-logo-image { display: block; max-width: 340px; max-height: 92px; width: auto; height: auto; object-fit: contain; }
                 .invoice-container .invoice-logo-fallback { font-size: 54px; font-weight: 800; color: #211f75; letter-spacing: -1px; line-height: 1; }
-                .invoice-container .invoice-status { margin: 0; font-size: 24px; font-weight: bold; }
-                .invoice-container .invoice-status h3 { margin: 0; font-size: 18px; font-weight: 600; }
-                .invoice-container .small-text { font-size: 0.92em; }
+                .invoice-container .inv-meta { text-align: right; }
+                .invoice-container .inv-status { display: inline-block; font-size: 24px; font-weight: bold; text-transform: uppercase; }
+                .invoice-container .inv-number { margin: 0; font-size: 18px; font-weight: 600; }
+                .invoice-container .inv-dates { font-size: 12px; }
+                .invoice-container .inv-date-label { color: inherit; }
+
                 .invoice-container hr { margin: 20px 0; border: 0; border-top: 1px solid #eee; }
-                .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; }
+                .invoice-container address { margin: 8px 0 0; font-style: normal; line-height: 1.5; overflow-wrap: anywhere; }
+                .invoice-container .small-text { font-size: 0.92em; }
+                .invoice-container .text-muted { color: #666; }
+                .invoice-container .unpaid, .invoice-container .overdue { color: #cc0000; }
+                .invoice-container .paid { color: #779500; }
+                .invoice-container .refunded { color: #224488; }
+                .invoice-container .cancelled { color: #888; }
+
+                /* parties + payment card */
+                .invoice-container .inv-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+                .invoice-container .inv-parties.has-pay { grid-template-columns: 1fr minmax(220px, 1fr) 1fr; }
+                .invoice-container .inv-party { padding: 0 15px; }
+                .invoice-container .inv-party.right { text-align: right; }
+                .invoice-container .inv-pay { padding: 0 20px; border-left: 1px solid #eee; border-right: 1px solid #eee; }
+                .invoice-container .inv-pay-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+                .invoice-container .inv-pay-amount { font-size: 20px; font-weight: 800; color: #0f172a; line-height: 1.2; }
+                .invoice-container .inv-pay-due { font-size: 11px; color: #64748b; margin-top: 2px; }
+                .invoice-container .inv-pay-label { font-size: 12px; font-weight: 600; color: #334155; margin: 12px 0 6px; }
+                .invoice-container .inv-instructions { margin-top: 8px; font-size: 11px; line-height: 1.4; color: #475569; background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
+                .invoice-container .inv-pay-btn { display: block; width: 100%; margin-top: 10px; border: 0; border-radius: 10px; background: #14b8a6; color: #fff; font-weight: 700; font-size: 13px; padding: 9px 12px; cursor: pointer; transition: background .15s; }
+                .invoice-container .inv-pay-btn:hover { background: #0d9488; }
+                .invoice-container .inv-pay-note { margin-top: 8px; font-size: 11px; line-height: 1.4; color: #64748b; white-space: pre-line; }
+                .invoice-container .alert { padding: 6px 8px; margin: 8px 0 0; border: 1px solid transparent; border-radius: 8px; font-size: 11px; }
+                .invoice-container .alert.amber { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+                .invoice-container .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
+
+                /* tables */
                 .invoice-container .panel { margin-top: 14px; background: #fff; }
                 .invoice-container .table-responsive { width: 100%; overflow-x: auto; }
                 .invoice-container .table { width: 100%; max-width: 100%; margin-bottom: 20px; border-collapse: collapse; }
                 .invoice-container .table > thead > tr > td,
                 .invoice-container .table > tbody > tr > td { padding: 8px; line-height: 1.42857143; vertical-align: top; border: 1px solid #ddd; }
-                .invoice-container .text-right { text-align: right !important; }
-                .invoice-container .text-center { text-align: center !important; }
-                .invoice-container .mt-5 { margin-top: 50px; }
-                .invoice-container .mb-3 { margin-bottom: 30px; }
-                .invoice-container .unpaid, .invoice-container .overdue { color: #cc0000; }
-                .invoice-container .paid { color: #779500; }
-                .invoice-container .refunded { color: #224488; }
-                .invoice-container .cancelled { color: #888; }
-                .invoice-container .text-muted { color: #666; }
-                .payment-panel { border: 1px solid #ddd; padding: 12px; margin-top: 18px; }
-                .payment-heading { font-weight: 700; margin-bottom: 8px; }
-                .gateway-form .form-control { width: 100%; border: 1px solid #ccc; padding: 8px; margin-top: 6px; }
-                .alert { padding: 8px 10px; margin-bottom: 10px; border: 1px solid transparent; }
-                .alert.amber { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
-                .alert.rose { border-color: #fecdd3; background: #fff1f2; color: #9f1239; }
+                .invoice-container .table .amount-col { width: 20%; text-align: center; white-space: nowrap; }
+                .invoice-container .table .total-row.label { text-align: right; }
+                .invoice-container .table tr.grand-total td { font-weight: 700; background: #f8fafc; }
+                .invoice-container .records-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1e293b; }
+
+                /* footer */
+                .invoice-container .inv-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 50px; }
+                .invoice-container .inv-action { border-radius: 9999px; background: #0f172a; color: #fff; padding: 8px 16px; font-size: 12px; font-weight: 600; border: 0; cursor: pointer; text-align: center; text-decoration: none; }
+                .invoice-container .inv-action:hover { background: #1e293b; }
+                .invoice-container .inv-footnote { text-align: center; margin: 16px 0 30px; font-size: 13px; color: #64748b; }
+
                 @media (max-width: 767px) {
-                    .invoice-container .invoice-col { padding: 0 10px; }
-                    .invoice-container .invoice-logo-image { max-width: 240px; max-height: 72px; }
+                    .invoice-container { padding: 4px 2px; }
+                    .invoice-container .inv-header { flex-direction: column; gap: 12px; }
+                    .invoice-container .invoice-logo-image { max-width: 200px; max-height: 56px; }
+                    .invoice-container .invoice-logo-fallback { font-size: 36px; }
+                    .invoice-container .inv-meta { text-align: left; width: 100%; }
+                    .invoice-container .inv-meta-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+                    .invoice-container .inv-status { font-size: 12px; padding: 4px 10px; border-radius: 9999px; background: #f1f5f9; letter-spacing: 0.5px; }
+                    .invoice-container .inv-status.unpaid, .invoice-container .inv-status.overdue { background: #fef2f2; }
+                    .invoice-container .inv-status.paid { background: #f7fee7; }
+                    .invoice-container .inv-number { font-size: 20px; }
+                    .invoice-container .inv-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 13px; }
+                    .invoice-container .inv-dates > div { background: #f8fafc; border-radius: 10px; padding: 8px 10px; }
+                    .invoice-container .inv-date-label { display: block; font-size: 11px; color: #64748b; }
+                    .invoice-container .inv-dates .small-text { font-size: 14px; font-weight: 600; color: #0f172a; }
+                    .invoice-container hr { margin: 14px 0; }
+
+                    .invoice-container .inv-parties,
+                    .invoice-container .inv-parties.has-pay { grid-template-columns: 1fr 1fr; gap: 12px; }
+                    .invoice-container .inv-party,
+                    .invoice-container .inv-party.right { text-align: left; padding: 12px; border: 1px solid #eef2f7; border-radius: 12px; font-size: 14px; }
+                    .invoice-container .inv-party address { font-size: 13px; }
+
+                    .invoice-container .inv-pay { order: -1; grid-column: 1 / -1; border: 1px solid #99f6e4; border-radius: 14px; padding: 16px; background: #fbfffe; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
+                    .invoice-container .inv-pay-title { font-size: 12px; }
+                    .invoice-container .inv-pay-amount { font-size: 28px; }
+                    .invoice-container .inv-pay-due { font-size: 13px; }
+                    .invoice-container .inv-pay-label { font-size: 14px; margin-top: 16px; }
+                    .invoice-container .inv-instructions { font-size: 13px; padding: 10px 12px; }
+                    .invoice-container .inv-pay-btn { min-height: 50px; font-size: 16px; border-radius: 12px; margin-top: 14px; }
+                    .invoice-container .inv-pay-note { font-size: 12px; }
+                    .invoice-container .alert { font-size: 13px; padding: 8px 10px; }
+
+                    .invoice-container .table { font-size: 14px; }
+                    .invoice-container .table .amount-col { width: auto; text-align: right; }
+                    .invoice-container .table tr.grand-total td { font-size: 16px; }
+
+                    .invoice-container .records-table thead { display: none; }
+                    .invoice-container .records-table, .invoice-container .records-table tbody,
+                    .invoice-container .records-table tr, .invoice-container .records-table td { display: block; width: 100%; }
+                    .invoice-container .records-table tr { border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 12px; margin-bottom: 8px; }
+                    .invoice-container .records-table > tbody > tr > td { border: 0; padding: 4px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right !important; }
+                    .invoice-container .records-table > tbody > tr > td::before { content: attr(data-label); font-weight: 600; color: #64748b; text-align: left; }
+
+                    .invoice-container .inv-actions { margin-top: 24px; }
+                    .invoice-container .inv-action { flex: 1 1 0; min-height: 46px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
                 }
+
+                @media (max-width: 380px) {
+                    .invoice-container .inv-parties,
+                    .invoice-container .inv-parties.has-pay { grid-template-columns: 1fr; }
+                }
+
                 @media print {
-                    .invoice-container .invoice-grid { display: table !important; width: 100% !important; table-layout: fixed !important; }
-                    .invoice-container .invoice-grid > .invoice-col { display: table-cell !important; width: 50% !important; vertical-align: top !important; }
+                    .invoice-container .inv-header { flex-direction: row !important; }
+                    .invoice-container .inv-meta { text-align: right !important; }
+                    .invoice-container .inv-parties { grid-template-columns: 1fr 1fr !important; }
                     .no-print, .no-print * { display: none !important; }
                 }
             `}</style>
 
             <div className="invoice-container">
-                <div className="invoice-grid invoice-header">
-                    <div className="invoice-col logo-wrap">
+                <div className="inv-header">
+                    <div className="logo-wrap">
                         {company.logo_url ? (
                             <img src={company.logo_url} alt={`${company.name || 'Company'} logo`} className="invoice-logo-image" />
                         ) : (
                             <div className="invoice-logo-fallback">{String(company.name || '').toLowerCase()}</div>
                         )}
                     </div>
-                    <div className="invoice-col text-right">
-                        <div className="invoice-status">
-                            <span className={invoice.status_class} style={{ textTransform: 'uppercase' }}>{invoice.status_label}</span>
-                            <h3>Invoice #{invoice.number_display || invoice.id}</h3>
-                            <div style={{ marginTop: 0, fontSize: 12 }}>
-                                Invoice Date: <span className="small-text">{invoice.issue_date_display}</span>
+                    <div className="inv-meta">
+                        <div className="inv-meta-top">
+                            <h3 className="inv-number">Invoice #{invoice.number_display || invoice.id}</h3>
+                            <span className={`inv-status ${invoice.status_class || ''}`}>{invoice.status_label}</span>
+                        </div>
+                        <div className="inv-dates">
+                            <div>
+                                <span className="inv-date-label">Invoice Date: </span>
+                                <span className="small-text">{invoice.issue_date_display}</span>
                             </div>
-                            <div style={{ marginTop: 0, fontSize: 12 }}>
-                                Invoice Due Date: <span className="small-text">{invoice.due_date_display}</span>
+                            <div>
+                                <span className="inv-date-label">Invoice Due Date: </span>
+                                <span className="small-text">{invoice.due_date_display}</span>
                             </div>
                             {invoice.paid_at_display ? (
-                                <div style={{ marginTop: 0, fontSize: 12 }}>
-                                    Paid Date: <span className="small-text">{invoice.paid_at_display}</span>
+                                <div>
+                                    <span className="inv-date-label">Paid Date: </span>
+                                    <span className="small-text">{invoice.paid_at_display}</span>
                                 </div>
                             ) : null}
                         </div>
@@ -170,8 +239,8 @@ export default function Pay({
                     </div>
                 )}
 
-                <div className="invoice-grid invoice-addresses">
-                    <div className="invoice-col" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
+                <div className={`inv-parties${showPaymentPanel ? ' has-pay' : ''}`}>
+                    <div className="inv-party">
                         <strong>Invoiced To</strong>
                         <address className="small-text">
                             {invoice?.customer?.name || '--'}
@@ -182,56 +251,56 @@ export default function Pay({
                         </address>
                     </div>
                     {showPaymentPanel ? (
-                        <div className="invoice-col no-print" style={{ width: '33.33%', borderLeft: '1px solid #eee', borderRight: '1px solid #eee', paddingLeft: '20px', paddingRight: '20px' }}>
-                            <div className="payment-heading" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', marginBottom: '8px', fontWeight: '700' }}>
-                                Payment Method
-                            </div>
-                            {invoice.pending_proof ? <div className="alert amber" style={{ fontSize: '11px', padding: '6px', margin: '0 0 8px 0' }}>Pending review.</div> : null}
+                        <div className="inv-pay no-print">
+                            <div className="inv-pay-title">Amount Due</div>
+                            <div className="inv-pay-amount">{invoice.payable_amount_display}</div>
+                            <div className="inv-pay-due">Due on {invoice.due_date_display}</div>
+
+                            {invoice.pending_proof ? (
+                                <div className="alert amber">Your payment proof is pending review.</div>
+                            ) : null}
                             {!invoice.pending_proof && invoice.rejected_proof ? (
-                                <div className="alert rose" style={{ fontSize: '11px', padding: '6px', margin: '0 0 8px 0' }}>Payment rejected.</div>
+                                <div className="alert rose">Your last payment was rejected. Please pay again.</div>
                             ) : null}
 
                             {gateways.length === 0 ? (
-                                <div className="small-text text-muted" style={{ fontSize: '11px' }}>No active gateways.</div>
+                                <div className="inv-pay-note">No payment method is available right now.</div>
                             ) : (
-                                <form method="POST" action={routes.checkout} id="gateway-form" className="gateway-form" target={gatewayTarget} data-native="true" style={{ margin: 0 }}>
+                                <form method="POST" action={routes.checkout} id="gateway-form" target={gatewayTarget} data-native="true" style={{ margin: 0 }}>
                                     <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content || ''} />
+                                    <div className="inv-pay-label">Choose payment method</div>
                                     <SearchableSelect
                                         name="payment_gateway_id"
                                         value={gatewayId}
                                         onChange={(nextValue) => setGatewayId(String(nextValue || ''))}
                                         options={gatewayOptions}
-                                        placeholder="Select gateway"
+                                        placeholder="Select payment method"
+                                        searchable={false}
+                                        triggerClassName="!h-12 !rounded-xl !border-2 !border-teal-200 !bg-white !px-4 !text-[15px] !font-semibold !text-slate-900 hover:!border-teal-400"
+                                        panelClassName="!rounded-xl"
+                                        optionClassName="!px-4 !py-3 !text-sm"
                                     />
                                     {selectedGateway?.instructions ? (
                                         <div
                                             id="gateway-instructions"
-                                            className="small-text text-muted"
-                                            style={{ marginTop: 6, marginBottom: 8, fontSize: '11px', lineHeight: '1.3' }}
+                                            className="inv-instructions"
                                             dangerouslySetInnerHTML={{
                                                 __html: toHtmlWithLineBreaks(selectedGateway.instructions),
                                             }}
                                         />
                                     ) : null}
-                                    <button 
-                                        type="submit" 
-                                        id="gateway-submit" 
-                                        className="rounded bg-teal-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-600 transition-colors"
-                                        style={{ width: '100%', display: 'block', marginTop: '8px' }}
-                                    >
+                                    <button type="submit" id="gateway-submit" className="inv-pay-btn">
                                         {gatewayButtonLabel}
                                     </button>
                                 </form>
                             )}
 
                             {payment_instructions ? (
-                                <div className="small-text text-muted whitespace-pre-line" style={{ marginTop: 8, fontSize: '11px', lineHeight: '1.3' }}>
-                                    {payment_instructions}
-                                </div>
+                                <div className="inv-pay-note">{payment_instructions}</div>
                             ) : null}
                         </div>
                     ) : null}
-                    <div className="invoice-col right" style={{ width: showPaymentPanel ? '33.33%' : '50%' }}>
+                    <div className="inv-party right">
                         <strong>Pay To</strong>
                         <address className="small-text">
                             {company.name}
@@ -243,126 +312,104 @@ export default function Pay({
                     </div>
                 </div>
 
-                <div className="panel panel-default">
-                    <div className="panel-body">
-                        <div className="table-responsive">
-                            <table className="table table-condensed">
-                                <thead>
-                                    <tr>
-                                        <td>
-                                            <strong>Description</strong>
-                                        </td>
-                                        <td width="20%" className="text-center">
-                                            <strong>Amount</strong>
-                                        </td>
+                <div className="panel">
+                    <div className="table-responsive">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <td>
+                                        <strong>Description</strong>
+                                    </td>
+                                    <td className="amount-col">
+                                        <strong>Amount</strong>
+                                    </td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(invoice.items || []).map((item) => (
+                                    <tr key={item.id}>
+                                        <td>{item.description}</td>
+                                        <td className="amount-col">{item.line_total_display}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {(invoice.items || []).map((item) => (
-                                        <tr key={item.id}>
-                                            <td>{item.description}</td>
-                                            <td className="text-center">{item.line_total_display}</td>
-                                        </tr>
-                                    ))}
+                                ))}
+                                <tr>
+                                    <td className="total-row label">
+                                        <strong>Sub Total</strong>
+                                    </td>
+                                    <td className="total-row amount-col">{invoice.subtotal_display}</td>
+                                </tr>
+                                {invoice.has_tax ? (
                                     <tr>
-                                        <td className="total-row text-right">
-                                            <strong>Sub Total</strong>
+                                        <td className="total-row label">
+                                            <strong>
+                                                {invoice.tax_mode === 'inclusive' ? 'Included VAT' : tax.label} ({invoice.tax_rate_percent_display}%)
+                                            </strong>
                                         </td>
-                                        <td className="total-row text-center">{invoice.subtotal_display}</td>
+                                        <td className="total-row amount-col">{invoice.tax_amount_display}</td>
                                     </tr>
-                                    {invoice.has_tax ? (
-                                        <tr>
-                                            <td className="total-row text-right">
-                                                <strong>
-                                                    {invoice.tax_mode === 'inclusive' ? 'Included VAT' : tax.label} ({invoice.tax_rate_percent_display}%)
-                                                </strong>
-                                            </td>
-                                            <td className="total-row text-center">{invoice.tax_amount_display}</td>
-                                        </tr>
-                                    ) : null}
-                                    <tr>
-                                        <td className="total-row text-right">
-                                            <strong>Discount</strong>
-                                        </td>
-                                        <td className="total-row text-center">- {invoice.discount_display}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="total-row text-right">
-                                            <strong>Paid Amount</strong>
-                                        </td>
-                                        <td className="total-row text-center">- {invoice.paid_amount_display}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="total-row text-right">
-                                            <strong>Total Due</strong>
-                                        </td>
-                                        <td className="total-row text-center">{invoice.payable_amount_display}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                ) : null}
+                                <tr>
+                                    <td className="total-row label">
+                                        <strong>Discount</strong>
+                                    </td>
+                                    <td className="total-row amount-col">- {invoice.discount_display}</td>
+                                </tr>
+                                <tr>
+                                    <td className="total-row label">
+                                        <strong>Paid Amount</strong>
+                                    </td>
+                                    <td className="total-row amount-col">- {invoice.paid_amount_display}</td>
+                                </tr>
+                                <tr className="grand-total">
+                                    <td className="total-row label">
+                                        <strong>Total Due</strong>
+                                    </td>
+                                    <td className="total-row amount-col">{invoice.payable_amount_display}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 {payments && payments.length > 0 && (
-                    <div className="panel panel-default" style={{ marginTop: '20px' }}>
-                        <div className="panel-body">
-                            <div className="payment-heading" style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#1e293b' }}>
-                                Payment Records
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-condensed" style={{ marginBottom: 0 }}>
-                                    <thead style={{ background: '#f8fafc' }}>
-                                        <tr>
-                                            <td style={{ padding: '8px' }}><strong>Date</strong></td>
-                                            <td style={{ padding: '8px' }}><strong>Payment Method</strong></td>
-                                            <td style={{ padding: '8px' }}><strong>Reference</strong></td>
-                                            <td className="text-center" style={{ padding: '8px' }}><strong>Amount</strong></td>
+                    <div className="panel" style={{ marginTop: '20px' }}>
+                        <div className="records-title">Payment Records</div>
+                        <div className="table-responsive">
+                            <table className="table records-table" style={{ marginBottom: 0 }}>
+                                <thead style={{ background: '#f8fafc' }}>
+                                    <tr>
+                                        <td><strong>Date</strong></td>
+                                        <td><strong>Payment Method</strong></td>
+                                        <td><strong>Reference</strong></td>
+                                        <td style={{ textAlign: 'center' }}><strong>Amount</strong></td>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {payments.map((payment) => (
+                                        <tr key={payment.id}>
+                                            <td data-label="Date">{payment.date_display}</td>
+                                            <td data-label="Method">{payment.method}</td>
+                                            <td data-label="Reference" style={{ overflowWrap: 'anywhere' }}>{payment.reference}</td>
+                                            <td data-label="Amount" className="font-semibold text-emerald-700" style={{ textAlign: 'center' }}>
+                                                {payment.amount_display}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {payments.map((payment) => (
-                                            <tr key={payment.id}>
-                                                <td style={{ padding: '8px' }}>{payment.date_display}</td>
-                                                <td style={{ padding: '8px' }}>{payment.method}</td>
-                                                <td style={{ padding: '8px' }}>{payment.reference}</td>
-                                                <td className="text-center font-semibold text-emerald-700" style={{ padding: '8px' }}>
-                                                    {payment.amount_display}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}
 
-
-
-                <div className="container-fluid invoice-container">
-                    <div className="row mt-5" style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div className="invoice-col full no-print" style={{ textAlign: 'center' }}>
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                <a href={routes.download} data-native="true" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                                    Download
-                                </a>
-                                <button
-                                    type="button"
-                                    onClick={() => window.print()}
-                                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                                >
-                                    Print
-                                </button>
-                            </div>
-                        </div>
-                        <div className="invoice-col full" style={{ textAlign: 'center' }}>
-                            <div className="mb-3">
-                                <p>This is system generated invoice no signature required</p>
-                            </div>
-                        </div>
-                    </div>
+                <div className="inv-actions no-print">
+                    <a href={routes.download} data-native="true" className="inv-action">
+                        Download
+                    </a>
+                    <button type="button" onClick={() => window.print()} className="inv-action">
+                        Print
+                    </button>
                 </div>
+                <p className="inv-footnote">This is system generated invoice no signature required</p>
             </div>
         </>
     );

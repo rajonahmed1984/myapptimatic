@@ -23,7 +23,8 @@ use Illuminate\Support\Str;
 class ClientNotificationService
 {
     public function __construct(
-        private readonly MailSender $mailSender
+        private readonly MailSender $mailSender,
+        private readonly PushNotificationService $push
     ) {
     }
 
@@ -109,6 +110,14 @@ class ClientNotificationService
         $order->loadMissing(['customer', 'plan.product', 'invoice', 'subscription.licenses.domains']);
 
         $customer = $order->customer;
+
+        $this->push->toCustomer(
+            $customer,
+            'Order accepted',
+            'Your order '.($order->order_number ?? $order->id).' has been accepted and your service is being set up.',
+            $order->subscription ? route('client.services.show', $order->subscription) : route('client.services.index')
+        );
+
         if (! $customer || ! $customer->email) {
             return;
         }
@@ -267,6 +276,12 @@ class ClientNotificationService
     {
         $invoice->loadMissing(['customer']);
 
+        $this->pushInvoice(
+            $invoice,
+            'New invoice #'.$this->invoiceNumber($invoice),
+            'Amount: '.$invoice->currency.' '.number_format((float) $invoice->total, 2).'. Due on '.$this->invoiceDueDate($invoice).'. Tap to pay.'
+        );
+
         $recipient = $invoice->customer?->email;
         if (! $recipient) {
             return;
@@ -314,6 +329,13 @@ class ClientNotificationService
     public function sendInvoiceReminder(Invoice $invoice, string $templateKey): void
     {
         $invoice->loadMissing(['customer']);
+
+        $isOverdue = $invoice->due_date !== null && $invoice->due_date->isPast() && ! $invoice->due_date->isToday();
+        $this->pushInvoice(
+            $invoice,
+            ($isOverdue ? 'Overdue: invoice #' : 'Payment reminder: invoice #').$this->invoiceNumber($invoice),
+            $invoice->currency.' '.number_format((float) $invoice->total, 2).($isOverdue ? ' was due on ' : ' is due on ').$this->invoiceDueDate($invoice).'. Tap to pay.'
+        );
 
         $recipient = $invoice->customer?->email;
         if (! $recipient) {
@@ -410,6 +432,21 @@ class ClientNotificationService
         $invoice->loadMissing(['customer']);
         $customer = $invoice->customer;
 
+        $pushStatus = strtolower((string) ($invoice->status ?? 'unpaid'));
+        if ($pushStatus === 'paid') {
+            $this->pushInvoice(
+                $invoice,
+                'Payment received',
+                'Thank you! Invoice #'.$this->invoiceNumber($invoice).' ('.$invoice->currency.' '.number_format((float) $invoice->total, 2).') is now paid.'
+            );
+        } elseif ($pushStatus !== 'unpaid') {
+            $this->pushInvoice(
+                $invoice,
+                'Invoice #'.$this->invoiceNumber($invoice).' updated',
+                'Payment status: '.$this->humanizeLabel($pushStatus).'.'
+            );
+        }
+
         if (! $customer || ! $customer->email) {
             return;
         }
@@ -492,6 +529,14 @@ class ClientNotificationService
 
     public function sendTicketReplyFromAdmin(SupportTicket $ticket, SupportTicketReply $reply): void
     {
+        $ticket->loadMissing(['customer']);
+        $this->push->toCustomer(
+            $ticket->customer,
+            'New reply on ticket #'.$ticket->id,
+            (string) ($reply->message ?: $ticket->subject),
+            route('client.support-tickets.show', $ticket)
+        );
+
         $attachmentUrl = $reply->attachmentUrl();
         $extra = [
             '{{reply_message}}' => $reply->message,
@@ -545,6 +590,17 @@ class ClientNotificationService
     ): void {
         $cancellationRequest->loadMissing(['customer', 'subscription.plan.product']);
         $customer = $cancellationRequest->customer;
+
+        $this->push->toCustomer(
+            $customer,
+            $templateKey === 'cancellation_accepted' ? 'Cancellation approved' : 'Cancellation declined',
+            $templateKey === 'cancellation_accepted'
+                ? 'Your cancellation request has been approved.'
+                : 'Your cancellation request was declined. The service continues as normal.',
+            $cancellationRequest->subscription
+                ? route('client.services.show', $cancellationRequest->subscription)
+                : route('client.services.index')
+        );
 
         if (! $customer || ! $customer->email) {
             return;
@@ -613,6 +669,21 @@ class ClientNotificationService
         $fromEmail = $this->resolveFromEmail($template);
 
         $this->sendGeneric($customer->email, $subject, $bodyHtml, $fromEmail, $companyName, [], MailCategory::BILLING);
+    }
+
+    private function pushInvoice(Invoice $invoice, string $title, string $body): void
+    {
+        $this->push->toCustomer($invoice->customer, $title, $body, route('client.invoices.pay', $invoice));
+    }
+
+    private function invoiceNumber(Invoice $invoice): string
+    {
+        return (string) (is_numeric($invoice->number) ? $invoice->number : $invoice->id);
+    }
+
+    private function invoiceDueDate(Invoice $invoice): string
+    {
+        return $invoice->due_date?->format(Setting::getValue('date_format', config('app.date_format', 'd-m-Y'))) ?? '--';
     }
 
     private function sendTicketTemplate(SupportTicket $ticket, string $templateKey, string $fallbackSubject, array $extraReplacements = []): void
