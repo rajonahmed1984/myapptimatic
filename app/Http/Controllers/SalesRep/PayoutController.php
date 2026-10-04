@@ -64,6 +64,7 @@ class PayoutController extends Controller
             'routes' => [
                 'dashboard' => route('rep.dashboard'),
                 'request' => route('rep.payouts.requests.store'),
+                'profile' => route('rep.profile.edit'),
             ],
         ]);
     }

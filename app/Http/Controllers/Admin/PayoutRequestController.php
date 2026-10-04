@@ -31,7 +31,7 @@ class PayoutRequestController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $query = CommissionPayoutRequest::query()
-            ->with(['salesRep:id,name,email', 'processor:id,name'])
+            ->with(['salesRep:id,name,email,payout_method_default,payout_details_encrypted', 'processor:id,name'])
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($search !== '', fn ($q) => $q->whereHas('salesRep', function ($rep) use ($search) {
                 $rep->where('name', 'like', '%'.$search.'%')

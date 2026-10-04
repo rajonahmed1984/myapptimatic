@@ -27,6 +27,9 @@ class PayoutRequestPresenter
             'rep_name' => (string) ($rep?->name ?? '--'),
             'rep_email' => (string) ($rep?->email ?? ''),
             'rep_url' => $rep ? route('admin.sales-reps.show', ['sales_rep' => $rep->id, 'tab' => 'payouts']) : null,
+            // Where the rep asked to be paid, and the method to pre-select.
+            'pay_to' => $rep?->payoutAccountSummary($methodNames),
+            'pay_to_method' => $rep?->payout_method_default,
             'amount' => (float) $item->amount,
             'paid_amount' => $item->paid_amount !== null ? (float) $item->paid_amount : null,
             'currency' => $item->currency,

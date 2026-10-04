@@ -21,7 +21,7 @@ const requestStatus = {
     cancelled: { label: 'Cancelled', className: 'border-slate-200 bg-slate-100 text-slate-600' },
 };
 
-function AvailablePayout({ availability = {}, action, csrf, errors = {} }) {
+function AvailablePayout({ availability = {}, action, csrf, errors = {}, profileUrl = '' }) {
     const available = Number(availability.available || 0);
     const negative = available < -0.009;
     const canRequest = Boolean(availability.can_request);
@@ -77,6 +77,11 @@ function AvailablePayout({ availability = {}, action, csrf, errors = {} }) {
                         <div className="space-y-1">
                             <div className="text-sm font-semibold text-slate-800">Request a payout</div>
                             <div className="text-sm text-slate-600">{availability.reason}</div>
+                            {availability.needs_payout_account && profileUrl ? (
+                                <a href={profileUrl} data-native="true" className="inline-flex text-sm font-semibold text-teal-700 hover:text-teal-600">
+                                    Add payout account →
+                                </a>
+                            ) : null}
                             {errors?.amount ? <div className="text-xs text-rose-600">{errors.amount}</div> : null}
                         </div>
                     )}
@@ -147,7 +152,7 @@ export default function Index({ availability = {}, payout_requests: payoutReques
             <Head title="My Payouts" />
 
             <div className="space-y-6">
-                <AvailablePayout availability={availability} action={routes?.request} csrf={csrf} errors={errors} />
+                <AvailablePayout availability={availability} action={routes?.request} csrf={csrf} errors={errors} profileUrl={routes?.profile} />
 
                 <PayoutRequests requests={payoutRequests} csrf={csrf} />
 

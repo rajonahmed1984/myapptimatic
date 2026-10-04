@@ -37,7 +37,8 @@ class SalesRepresentative extends Model
     ];
 
     protected $casts = [
-        'payout_details_encrypted' => 'array',
+        // Where the rep wants to be paid (account number etc.), stored encrypted.
+        'payout_details_encrypted' => 'encrypted:array',
         'metadata' => 'array',
     ];
 
@@ -71,6 +72,47 @@ class SalesRepresentative extends Model
     public function referralUrl(): string
     {
         return rtrim(UrlResolver::portalUrl(), '/').'/register?ref='.urlencode((string) $this->referral_code);
+    }
+
+    /**
+     * Where to send this rep's payouts.
+     *
+     * @return array{method: ?string, account_name: ?string, account_number: ?string, bank_name: ?string, branch: ?string, note: ?string}
+     */
+    public function payoutAccount(): array
+    {
+        $details = is_array($this->payout_details_encrypted) ? $this->payout_details_encrypted : [];
+
+        return [
+            'method' => $this->payout_method_default,
+            'account_name' => $details['account_name'] ?? null,
+            'account_number' => $details['account_number'] ?? null,
+            'bank_name' => $details['bank_name'] ?? null,
+            'branch' => $details['branch'] ?? null,
+            'note' => $details['note'] ?? null,
+        ];
+    }
+
+    /**
+     * One line for admins paying the rep, e.g. "bKash · 01711000000 · Osman".
+     *
+     * @param  array<string, string>  $methodNames  payout method code => name
+     */
+    public function payoutAccountSummary(array $methodNames = []): ?string
+    {
+        $account = $this->payoutAccount();
+
+        if (! $account['method'] && ! $account['account_number']) {
+            return null;
+        }
+
+        return implode(' · ', array_filter([
+            $account['method'] ? ($methodNames[$account['method']] ?? $account['method']) : null,
+            $account['bank_name'],
+            $account['branch'],
+            $account['account_number'],
+            $account['account_name'],
+        ]));
     }
 
     public function isPending(): bool

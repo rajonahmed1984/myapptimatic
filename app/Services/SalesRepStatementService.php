@@ -114,6 +114,79 @@ class SalesRepStatementService
     }
 
     /**
+     * How much of a client payment a rep collects they may keep.
+     *
+     * The payment earns the rep some commission (their share of a project as
+     * its client pays, or their commission on a subscription invoice). That
+     * first settles anything the rep already holds above earned commission;
+     * what is left, plus any balance the company owes them, may be kept.
+     *
+     * @return array{balance: float, from_this_payment: float, limit: float}
+     */
+    public function retainLimit(int $repId, Invoice $invoice, float $collected): array
+    {
+        $balance = (float) $this->forRep($repId)['balance'];
+        $fromPayment = round($this->commissionFromPayment($repId, $invoice, max(0, $collected)), 2);
+
+        return [
+            'balance' => round($balance, 2),
+            'from_this_payment' => $fromPayment,
+            'limit' => round(max(0, $balance + $fromPayment), 2),
+        ];
+    }
+
+    /**
+     * Commission a payment of $amount on $invoice would earn the rep. An
+     * estimate for commission set by rules; exact for project shares and
+     * subscription commission amounts.
+     */
+    private function commissionFromPayment(int $repId, Invoice $invoice, float $amount): float
+    {
+        if ($invoice->project_id) {
+            $commission = (float) CommissionEarning::query()
+                ->where('sales_representative_id', $repId)
+                ->where('source_type', 'project')
+                ->where('project_id', $invoice->project_id)
+                ->whereIn('status', self::ACTIVE_EARNING_STATUSES)
+                ->sum('commission_amount');
+            $budget = (float) Project::withTrashed()->whereKey($invoice->project_id)->value('total_budget');
+
+            if ($commission <= 0 || $budget <= 0) {
+                return 0.0;
+            }
+
+            $invoices = Invoice::query()->where('project_id', $invoice->project_id)->get(['id', 'status', 'total']);
+            $paidSoFar = array_sum($this->settledAmounts($invoices));
+            $newlyCovered = min($budget, $paidSoFar + $amount) - min($budget, $paidSoFar);
+
+            return max(0, $commission * $newlyCovered / $budget);
+        }
+
+        $subscription = $invoice->subscription_id
+            ? Subscription::with('customer:id,referred_by_sales_rep_id')->find($invoice->subscription_id)
+            : null;
+        $total = (float) $invoice->total;
+
+        if (! $subscription || $total <= 0) {
+            return 0.0;
+        }
+
+        $share = min(1, $amount / $total);
+
+        if ((int) $subscription->sales_rep_id === $repId && $subscription->sales_rep_commission_amount !== null) {
+            return (float) $subscription->sales_rep_commission_amount * $share;
+        }
+
+        if ((int) ($subscription->customer?->referred_by_sales_rep_id ?? 0) === $repId) {
+            $percentage = (float) \App\Models\SalesRepresentative::query()->whereKey($repId)->value('subscription_commission_percentage');
+
+            return $total * $share * $percentage / 100;
+        }
+
+        return 0.0;
+    }
+
+    /**
      * Share of each earning's commission that its client has paid for, 0..1.
      *
      * @param  Collection<int, CommissionEarning>  $earnings

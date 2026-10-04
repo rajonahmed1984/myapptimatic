@@ -91,7 +91,14 @@ class AdminPayoutRequestsPageTest extends TestCase
     private function repWithPayable(string $name, float $commission): SalesRepresentative
     {
         $user = User::factory()->create(['role' => Role::SALES]);
-        $rep = SalesRepresentative::create(['user_id' => $user->id, 'name' => $name, 'email' => $user->email, 'status' => 'active']);
+        $rep = SalesRepresentative::create([
+            'user_id' => $user->id,
+            'name' => $name,
+            'email' => $user->email,
+            'status' => 'active',
+            'payout_method_default' => PaymentMethod::allowedCommissionPayoutCodes()[0],
+            'payout_details_encrypted' => ['account_number' => '01711000000', 'account_name' => $name],
+        ]);
         $customer = Customer::create(['name' => $name.' Client', 'status' => 'active']);
         $project = Project::create([
             'customer_id' => $customer->id,

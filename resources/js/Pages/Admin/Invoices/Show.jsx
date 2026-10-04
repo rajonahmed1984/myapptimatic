@@ -76,6 +76,12 @@ export default function Show({
 
     const [activeTab, setActiveTab] = useState('summary');
     const [collectionOpen, setCollectionOpen] = useState(false);
+    const [collectionRepId, setCollectionRepId] = useState(String(sales_rep_collection_options[0]?.id || ''));
+    const [retainedInput, setRetainedInput] = useState('0.00');
+    const collectionRep = sales_rep_collection_options.find((item) => String(item.id) === collectionRepId) || null;
+    const retainLimit = Number(collectionRep?.retain?.limit ?? 0);
+    const retainOver = Math.max(0, Number(retainedInput || 0) - retainLimit);
+    const formatTk = (value) => `৳${Math.abs(Number(value || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const [newItemRows, setNewItemRows] = useState([0]);
     const [newItemSeed, setNewItemSeed] = useState(1);
 
@@ -282,7 +288,15 @@ export default function Show({
                                             <input type="hidden" name="_token" value={csrf} />
                                             <div>
                                                 <label className={labelClass}>Sales Representative</label>
-                                                <SearchableSelect name="sales_rep_id" required defaultValue={String(sales_rep_collection_options[0]?.id || '')} options={salesRepCollectionOptions} className="mt-1" placeholder="Select sales rep" />
+                                                <SearchableSelect
+                                                    name="sales_rep_id"
+                                                    required
+                                                    defaultValue={String(sales_rep_collection_options[0]?.id || '')}
+                                                    options={salesRepCollectionOptions}
+                                                    onChange={(value) => setCollectionRepId(String(value || ''))}
+                                                    className="mt-1"
+                                                    placeholder="Select sales rep"
+                                                />
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Collected Amount</label>
@@ -290,7 +304,34 @@ export default function Show({
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Retained / Taken Amount</label>
-                                                <input name="retained_amount" type="number" min="0" step="0.01" defaultValue="0.00" className={inputClass} />
+                                                <input
+                                                    name="retained_amount"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={retainedInput}
+                                                    onChange={(event) => setRetainedInput(event.target.value)}
+                                                    className={inputClass}
+                                                />
+                                                {collectionRep?.retain ? (
+                                                    <div className={`mt-1 text-xs ${retainOver > 0.009 ? 'text-rose-700' : 'text-slate-500'}`}>
+                                                        Can keep up to <strong>{formatTk(retainLimit)}</strong>
+                                                        {' '}(balance {Number(collectionRep.retain.balance) < 0 ? '−' : ''}{formatTk(collectionRep.retain.balance)}
+                                                        {' '}+ about {formatTk(collectionRep.retain.from_this_payment)} commission from collecting the full amount).
+                                                    </div>
+                                                ) : null}
+                                                {props?.errors?.retained_amount ? (
+                                                    <div className="mt-1 text-xs text-rose-600">{props.errors.retained_amount}</div>
+                                                ) : null}
+                                                {retainOver > 0.009 ? (
+                                                    <label className="mt-2 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                                                        <input type="checkbox" name="allow_over_retain" value="1" className="mt-0.5" />
+                                                        <span>
+                                                            Allow anyway: the rep keeps {formatTk(retainOver)} more than they earn from this payment.
+                                                            It counts as an advance and shows as money they hold above earned commission.
+                                                        </span>
+                                                    </label>
+                                                ) : null}
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Payout Method</label>

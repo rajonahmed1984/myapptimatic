@@ -36,10 +36,18 @@ class SalesRepPayoutRequestTest extends TestCase
         parent::setUp();
 
         $user = User::factory()->create(['role' => Role::SALES]);
-        $this->rep = SalesRepresentative::create(['user_id' => $user->id, 'name' => 'Rep', 'email' => $user->email, 'status' => 'active']);
+        $this->method = PaymentMethod::allowedCommissionPayoutCodes()[0];
+        // Requests need somewhere to send the money.
+        $this->rep = SalesRepresentative::create([
+            'user_id' => $user->id,
+            'name' => 'Rep',
+            'email' => $user->email,
+            'status' => 'active',
+            'payout_method_default' => $this->method,
+            'payout_details_encrypted' => ['account_number' => '01711000000', 'account_name' => 'Rep'],
+        ]);
         $this->customer = Customer::create(['name' => 'Client', 'status' => 'active']);
         $this->admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
-        $this->method = PaymentMethod::allowedCommissionPayoutCodes()[0];
     }
 
     #[Test]

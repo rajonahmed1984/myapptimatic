@@ -217,15 +217,21 @@ class InvoiceController extends Controller
             'paymentProofs.reviewer',
         ]);
 
+        $details = $this->serializeInvoiceDetails($invoice);
+        $outstanding = (float) ($details['totals']['outstanding_value'] ?? 0);
+        $statements = app(\App\Services\SalesRepStatementService::class);
+
         return Inertia::render('Admin/Invoices/Show', [
             'pageTitle' => 'Invoice Details',
-            'invoice' => $this->serializeInvoiceDetails($invoice),
+            'invoice' => $details,
             'sales_rep_collection_options' => $this->invoiceSalesRepOptions($invoice)
                 ->map(fn (SalesRepresentative $salesRep) => [
                     'id' => $salesRep->id,
                     'name' => $salesRep->name,
                     'email' => $salesRep->email,
                     'label' => trim($salesRep->name.' '.($salesRep->email ? '('.$salesRep->email.')' : '')),
+                    // What the rep may keep if the whole outstanding amount is collected.
+                    'retain' => $statements->retainLimit($salesRep->id, $invoice, $outstanding),
                 ])
                 ->values()
                 ->all(),
@@ -705,6 +711,7 @@ class InvoiceController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'retained_amount' => ['nullable', 'numeric', 'min:0'],
+            'allow_over_retain' => ['nullable', 'boolean'],
             'payout_method' => ['nullable', Rule::in(PaymentMethod::allowedCommissionPayoutCodes())],
         ]);
 
@@ -764,6 +771,31 @@ class InvoiceController extends Controller
                 ->withInput();
         }
 
+        // A rep may keep only what this payment earns them, after settling
+        // anything they already hold above earned commission. Keeping more is
+        // an advance and has to be allowed explicitly.
+        $retainLimit = app(\App\Services\SalesRepStatementService::class)
+            ->retainLimit($salesRep->id, $invoice, $paymentAmount);
+        $overRetained = round(max(0, $retainedAmount - $retainLimit['limit']), 2);
+
+        if ($overRetained > 0 && ! $request->boolean('allow_over_retain')) {
+            $message = sprintf(
+                '%s can keep up to %s from this payment (balance %s, plus about %s commission this payment earns). Keeping %s is %s more; tick "Allow anyway" to record the extra as an advance.',
+                $salesRep->name,
+                number_format($retainLimit['limit'], 2),
+                number_format($retainLimit['balance'], 2),
+                number_format($retainLimit['from_this_payment'], 2),
+                number_format($retainedAmount, 2),
+                number_format($overRetained, 2)
+            );
+
+            if (AjaxResponse::ajaxFromRequest($request)) {
+                return AjaxResponse::ajaxError($message, 422, ['retained_amount' => [$message]]);
+            }
+
+            return back()->withErrors(['retained_amount' => $message])->withInput();
+        }
+
         if ($retainedAmount > 0 && ! Schema::hasColumn('commission_payouts', 'type')) {
             if (AjaxResponse::ajaxFromRequest($request)) {
                 return AjaxResponse::ajaxError('Sales rep retained collection requires the latest commission payout migration.', 422, [
@@ -784,6 +816,8 @@ class InvoiceController extends Controller
             $request,
             $invoice,
             $salesRep,
+            $retainLimit,
+            $overRetained,
             $paymentAmount,
             $paidTotal,
             $creditTotal,
@@ -818,6 +852,8 @@ class InvoiceController extends Controller
                     'outstanding_before_collection' => $outstandingAmount,
                     'collected_amount' => $paymentAmount,
                     'retained_amount' => $retainedAmount,
+                    'retain_limit' => $retainLimit['limit'],
+                    'over_retained' => $overRetained,
                     'invoice_marked_paid' => $marksInvoicePaid,
                     'note' => $note !== '' ? $note : null,
                 ],

@@ -42,10 +42,13 @@ class SalesRepPayoutRequestService
         // Client-paid commission on work not yet complete: payable later.
         $onHold = $balance > 0.009 ? round(max(0, $balance - $payable), 2) : 0.0;
 
+        $hasAccount = (bool) ($rep->payout_method_default && ($rep->payoutAccount()['account_number'] ?? null));
+
         $reason = match (true) {
             $balance < -0.009 => 'You have received more than the commission clients have paid for, so there is nothing to request.',
             $pending !== null => 'You already have a payout request waiting for the admin.',
             $payable <= 0.009 => 'Nothing is available yet. Commission becomes available once clients pay and the work is complete.',
+            ! $hasAccount => 'Add your payout account (method and number) in your Profile before requesting, so the admin knows where to send it.',
             default => null,
         };
 
@@ -56,6 +59,7 @@ class SalesRepPayoutRequestService
             'pending_amount' => $pending ? (float) $pending->amount : 0.0,
             'can_request' => $reason === null,
             'reason' => $reason,
+            'needs_payout_account' => ! $hasAccount,
         ];
     }
 
@@ -188,6 +192,12 @@ class SalesRepPayoutRequestService
             'processed_by' => $actorId,
             'processed_at' => now(),
         ]);
+
+        try {
+            app(SalesRepNotificationService::class)->sendPayoutRequestDeclined($request->fresh('salesRep'));
+        } catch (\Throwable) {
+            // The decline stands even if the email fails.
+        }
     }
 
     private function assertPending(CommissionPayoutRequest $request): void

@@ -691,6 +691,7 @@ class SalesRepresentativeController extends Controller
                 'status' => $salesRep->status,
                 'status_label' => ucfirst((string) $salesRep->status),
                 'is_pending' => $salesRep->isPending(),
+                'payout_account' => $salesRep->payoutAccountSummary(\App\Http\Controllers\SalesRep\PayoutController::methodNames()),
                 'referral_code' => (string) $salesRep->referral_code,
                 'referral_url' => $salesRep->referral_code ? $salesRep->referralUrl() : null,
                 'referred_customers_count' => $salesRep->referredCustomers()->count(),
@@ -1289,7 +1290,7 @@ class SalesRepresentativeController extends Controller
         $methodNames = \App\Http\Controllers\SalesRep\PayoutController::methodNames();
 
         return CommissionPayoutRequest::query()
-            ->with(['processor:id,name', 'salesRep:id,name,email'])
+            ->with(['processor:id,name', 'salesRep:id,name,email,payout_method_default,payout_details_encrypted'])
             ->where('sales_representative_id', $salesRep->id)
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('id')

@@ -4,7 +4,67 @@ import mediaUrl from '../../../utils/mediaUrl';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 import PasswordInput from '../../../Components/Form/PasswordInput';
 
-export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
+function PayoutAccountForm({ account = {}, methods = [], action, csrfToken, errors = {} }) {
+    const inputClass = 'mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm';
+    const labelClass = 'block text-xs font-semibold text-slate-600';
+    const saved = Boolean(account?.method && account?.account_number);
+
+    return (
+        <div className="card p-6">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <div className="text-sm font-semibold text-slate-800">Payout account</div>
+                    <p className="text-xs text-slate-500">Where the company sends your commission. The admin sees this when paying your requests.</p>
+                </div>
+                {!saved ? (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Not set yet</span>
+                ) : null}
+            </div>
+
+            <form method="POST" action={action} data-native="true" className="mt-4 grid gap-4 md:grid-cols-2">
+                <input type="hidden" name="_token" value={csrfToken} />
+                <input type="hidden" name="_method" value="PUT" />
+                <label>
+                    <span className={labelClass}>Method</span>
+                    <select name="payout_method" required defaultValue={account?.method || ''} className={inputClass}>
+                        <option value="" disabled>Choose…</option>
+                        {methods.map((method) => (
+                            <option key={method.code} value={method.code}>{method.name}</option>
+                        ))}
+                    </select>
+                    {errors?.payout_method ? <span className="mt-1 block text-xs text-rose-600">{errors.payout_method}</span> : null}
+                </label>
+                <label>
+                    <span className={labelClass}>Account / mobile number</span>
+                    <input name="account_number" required defaultValue={account?.account_number || ''} placeholder="e.g. 01711000000" className={inputClass} />
+                    {errors?.account_number ? <span className="mt-1 block text-xs text-rose-600">{errors.account_number}</span> : null}
+                </label>
+                <label>
+                    <span className={labelClass}>Account holder name</span>
+                    <input name="account_name" required defaultValue={account?.account_name || ''} className={inputClass} />
+                    {errors?.account_name ? <span className="mt-1 block text-xs text-rose-600">{errors.account_name}</span> : null}
+                </label>
+                <label>
+                    <span className={labelClass}>Bank name (for bank transfer)</span>
+                    <input name="bank_name" defaultValue={account?.bank_name || ''} className={inputClass} />
+                </label>
+                <label>
+                    <span className={labelClass}>Branch (for bank transfer)</span>
+                    <input name="branch" defaultValue={account?.branch || ''} className={inputClass} />
+                </label>
+                <label>
+                    <span className={labelClass}>Note (optional)</span>
+                    <input name="note" defaultValue={account?.note || ''} placeholder="e.g. Personal bKash" className={inputClass} />
+                </label>
+                <div className="flex justify-end md:col-span-2">
+                    <button type="submit" className="rounded-full bg-teal-500 px-6 py-2 text-sm font-semibold text-white">Save payout account</button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+export default function Edit({ user = {}, sales_rep = {}, form = {}, payout_account: payoutAccount = null, payout_methods: payoutMethods = [], payout_account_action: payoutAccountAction = '' }) {
     const page = usePage();
     const csrfToken = page?.props?.csrf_token || '';
     const errors = page?.props?.errors || {};
@@ -95,6 +155,18 @@ export default function Edit({ user = {}, sales_rep = {}, form = {} }) {
                     </div>
                 </form>
             </div>
+
+            {payoutAccountAction ? (
+                <div className="mt-6">
+                    <PayoutAccountForm
+                        account={payoutAccount || {}}
+                        methods={payoutMethods}
+                        action={payoutAccountAction}
+                        csrfToken={csrfToken}
+                        errors={errors}
+                    />
+                </div>
+            ) : null}
         </>
     );
 }

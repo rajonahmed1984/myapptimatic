@@ -64,6 +64,7 @@ Route::middleware([
         Route::redirect('/chat', '/sales/chats');
         Route::get('/profile', [SalesRepProfileController::class, 'edit'])->middleware(HandleInertiaRequests::class)->name('profile.edit');
         Route::put('/profile', [SalesRepProfileController::class, 'update'])->name('profile.update');
+        Route::put('/profile/payout-account', [SalesRepProfileController::class, 'updatePayoutAccount'])->name('profile.payout-account');
         Route::get('/earnings', [SalesRepEarningController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('earnings.index');
         Route::get('/payouts', [SalesRepPayoutController::class, 'index'])->middleware(HandleInertiaRequests::class)->name('payouts.index');
         Route::post('/payouts/requests', [SalesRepPayoutController::class, 'storeRequest'])->middleware('throttle:10,1')->name('payouts.requests.store');

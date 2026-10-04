@@ -118,6 +118,26 @@ class SalesRepNotificationService
         $this->sendGeneric($rep->email, $subject, $this->formatEmailBody($body), $companyName);
     }
 
+    public function sendPayoutRequestDeclined(\App\Models\CommissionPayoutRequest $request): void
+    {
+        $request->loadMissing('salesRep');
+        $rep = $request->salesRep;
+
+        if (! $rep?->email) {
+            return;
+        }
+
+        $companyName = (string) Setting::getValue('company_name', config('app.name'));
+        $amount = number_format((float) $request->amount, 2).' '.$request->currency;
+        $body = "Hi {$rep->name},\n\n"
+            ."Your payout request for {$amount} was declined.\n"
+            .'Reason: '.($request->admin_note ?: 'No reason given.')."\n\n"
+            ."You can see your available payout and send a new request here:\n"
+            .UrlResolver::portalUrl().'/sales/payouts';
+
+        $this->sendGeneric($rep->email, 'Your payout request was declined', $this->formatEmailBody($body), $companyName);
+    }
+
     public function sendCommissionPayoutNotification(CommissionPayout $payout, string $event = 'created'): void
     {
         $event = in_array($event, ['created', 'paid', 'reversed'], true) ? $event : 'created';

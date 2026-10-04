@@ -367,6 +367,12 @@ export default function Show({
                                     <dd className="mt-1">{rep?.user_name || '--'} <span className="text-slate-500">{rep?.user_email || ''}</span></dd>
                                 </div>
                                 <div className="col-span-3">
+                                    <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Payout account</dt>
+                                    <dd className="mt-1">
+                                        {rep?.payout_account || <span className="text-amber-700">Not set by the rep yet</span>}
+                                    </dd>
+                                </div>
+                                <div className="col-span-3">
                                     <dt className="text-xs uppercase tracking-[0.2em] text-slate-500">Referral link</dt>
                                     <dd className="mt-1 break-all">
                                         {rep?.referral_url ? (

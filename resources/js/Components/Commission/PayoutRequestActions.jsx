@@ -10,6 +10,15 @@ export default function PayoutRequestActions({ request, csrf, paymentMethods = [
 
     return (
         <div className="space-y-3">
+            {request?.pay_to ? (
+                <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
+                    Pay to: <strong>{request.pay_to}</strong>
+                </div>
+            ) : (
+                <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    This rep has not saved a payout account. Ask them where to send the money.
+                </div>
+            )}
             {payable > 0.009 ? (
                 <form method="POST" action={request?.routes?.approve} data-native="true" className="grid gap-3 md:grid-cols-6">
                     <input type="hidden" name="_token" value={csrf} />
@@ -28,7 +37,7 @@ export default function PayoutRequestActions({ request, csrf, paymentMethods = [
                     </label>
                     <label className="md:col-span-1">
                         <span className="mb-1 block text-xs font-semibold text-slate-600">Paid by</span>
-                        <select name="payout_method" required defaultValue="" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <select name="payout_method" required defaultValue={request?.pay_to_method || ''} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                             <option value="" disabled>Method…</option>
                             {paymentMethods.map((method) => (
                                 <option key={method.code} value={method.code}>{method.name}</option>
