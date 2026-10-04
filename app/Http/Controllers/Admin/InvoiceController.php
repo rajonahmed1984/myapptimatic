@@ -1482,7 +1482,9 @@ class InvoiceController extends Controller
         $paidAmount = $paidTotal + $creditTotal;
         $outstandingAmount = max(0, (float) $invoice->total - $paidAmount);
         $effectiveStatus = $this->effectiveInvoiceStatus((string) $invoice->status, $outstandingAmount);
-        $isPartial = $paidAmount > 0 && $paidAmount < (float) $invoice->total;
+        $isPartial = $this->isAwaitingPayment((string) $invoice->status)
+            && $paidAmount > 0
+            && $paidAmount < (float) $invoice->total;
 
         return [
             'id' => $invoice->id,
@@ -1520,7 +1522,11 @@ class InvoiceController extends Controller
         $hasTax = $invoice->tax_amount !== null && $invoice->tax_rate_percent !== null && $invoice->tax_mode;
         $discountAmount = $creditTotal;
         $payableAmount = max(0, (float) $invoice->total - $discountAmount);
-        $outstandingAmount = max(0, (float) $invoice->total - ($paidTotal + $creditTotal));
+        // A cancelled or refunded invoice is closed: nothing on it is due,
+        // even if part of it was collected before it was closed.
+        $outstandingAmount = $this->isAwaitingPayment((string) $invoice->status) || (string) $invoice->status === 'paid'
+            ? max(0, (float) $invoice->total - ($paidTotal + $creditTotal))
+            : 0.0;
         $feeTotal = round((float) $invoice->accountingEntries
             ->where('type', 'payment')
             ->sum(fn ($entry) => (float) (is_array($entry->metadata) ? ($entry->metadata['transaction_fee'] ?? 0) : 0)), 2);
@@ -2280,6 +2286,11 @@ class InvoiceController extends Controller
             'cancelled', 'refunded' => 'bg-slate-100 text-slate-700',
             default => 'bg-slate-100 text-slate-700',
         };
+    }
+
+    private function isAwaitingPayment(string $status): bool
+    {
+        return in_array($status, ['unpaid', 'overdue'], true);
     }
 
     private function effectiveInvoiceStatus(string $status, float $outstandingAmount): string

@@ -677,7 +677,12 @@ class CustomerController extends Controller
                     ->sum('amount');
                 
                 $totalPaidEffective = $paidAmount + $creditAmount;
-                $isPartiallyPaid = ($invoice->status !== 'paid' && $totalPaidEffective > 0.009 && $totalPaidEffective < $invoice->total);
+                // Only an invoice still awaiting payment can be part-paid; a
+                // cancelled or refunded one keeps its own status even when some
+                // money was taken before it was closed.
+                $isPartiallyPaid = in_array((string) $invoice->status, ['unpaid', 'overdue'], true)
+                    && $totalPaidEffective > 0.009
+                    && $totalPaidEffective < (float) $invoice->total;
 
                 return [
                     'id' => $invoice->id,
