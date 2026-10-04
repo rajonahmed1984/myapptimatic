@@ -76,12 +76,19 @@ class RepairSubscriptionBillingDrift extends Command
      * Renewing, non-monthly subscriptions whose next invoice is dated later
      * than the corrected rule would date it, and whose current term has not
      * been billed yet.
+     *
+     * Only rows that carry the bug's exact fingerprint are changed: a window
+     * one full term long, and next_invoice_at where the old code put it. Any
+     * other late date — a plan switched from monthly, a date set by hand —
+     * is listed for review, because re-dating it would raise a full-term
+     * invoice nobody asked for.
      */
     private function repairRenewalDates(bool $apply, Carbon $today): int
     {
         $this->newLine();
         $this->line('<comment>Renewal invoice dates</comment>');
         $count = 0;
+        $review = [];
 
         Subscription::query()
             ->with('plan')
@@ -90,7 +97,7 @@ class RepairSubscriptionBillingDrift extends Command
             ->where('cancel_at_period_end', false)
             ->whereHas('plan', fn ($query) => $query->where('interval', '!=', 'monthly'))
             ->orderBy('id')
-            ->chunkById(200, function ($subscriptions) use ($apply, $today, &$count) {
+            ->chunkById(200, function ($subscriptions) use ($apply, $today, &$count, &$review) {
                 foreach ($subscriptions as $subscription) {
                     if (! $subscription->current_period_start || ! $subscription->current_period_end || ! $subscription->next_invoice_at) {
                         continue;
@@ -106,6 +113,20 @@ class RepairSubscriptionBillingDrift extends Command
                     $expected = $this->billing->nextInvoiceAt($periodStart, $periodEnd, $today, (string) $subscription->plan->interval);
 
                     if (! $subscription->next_invoice_at->greaterThan($expected)) {
+                        continue;
+                    }
+
+                    $interval = (string) $subscription->plan->interval;
+
+                    if (! $this->hasDriftFingerprint($subscription, $interval)) {
+                        $review[] = sprintf(
+                            '  subscription #%d (%s plan): window %s..%s, next_invoice_at %s',
+                            $subscription->id,
+                            $interval,
+                            $periodStart->toDateString(),
+                            $periodEnd->toDateString(),
+                            $subscription->next_invoice_at->toDateString()
+                        );
                         continue;
                     }
 
@@ -128,7 +149,46 @@ class RepairSubscriptionBillingDrift extends Command
                 }
             });
 
+        if ($review !== []) {
+            $this->newLine();
+            $this->line('<comment>Needs manual review — left unchanged</comment>');
+            $this->line('  The billing window does not fit the plan, or the next invoice date was not set by');
+            $this->line('  the old renewal rule (e.g. the plan was switched from monthly, or the date was set');
+            $this->line('  by hand). Fix these from the subscription edit page.');
+
+            foreach ($review as $line) {
+                $this->line($line);
+            }
+        }
+
         return $count;
+    }
+
+    /**
+     * True when the row looks exactly like the old renewal rule left it: the
+     * window spans one full term, and next_invoice_at sits at the window's
+     * end, or invoice_generation_days before it.
+     */
+    private function hasDriftFingerprint(Subscription $subscription, string $interval): bool
+    {
+        $start = $subscription->current_period_start;
+        $end = $subscription->current_period_end;
+
+        $fullTermEnd = match ($interval) {
+            'yearly' => $start->copy()->addYear(),
+            'quarterly' => $start->copy()->addMonths(3),
+            default => $start->copy()->addMonth(),
+        };
+
+        if (! $end->isSameDay($fullTermEnd)) {
+            return false;
+        }
+
+        $generationDays = (int) Setting::getValue('invoice_generation_days');
+        $nextInvoiceAt = $subscription->next_invoice_at;
+
+        return $nextInvoiceAt->isSameDay($end)
+            || ($generationDays > 0 && $nextInvoiceAt->isSameDay($end->copy()->subDays($generationDays)));
     }
 
     /**

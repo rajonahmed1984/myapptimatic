@@ -83,6 +83,31 @@ class RepairSubscriptionBillingDriftTest extends TestCase
     }
 
     #[Test]
+    public function a_plan_switched_from_monthly_is_reported_not_rebilled(): void
+    {
+        // A monthly subscription moved onto a yearly plan: the window is
+        // still one month and next_invoice_at was set by hand.
+        $subscription = $this->subscription('yearly', '2026-09-01', '2026-09-30', '2027-02-01');
+
+        $this->artisan('subscriptions:repair-billing-drift', ['--apply' => true])
+            ->expectsOutputToContain('Needs manual review')
+            ->expectsOutputToContain('subscription #'.$subscription->id.' (yearly plan)')
+            ->assertSuccessful();
+
+        $this->assertSame('2027-02-01', $subscription->fresh()->next_invoice_at->toDateString());
+    }
+
+    #[Test]
+    public function a_hand_set_date_on_a_full_term_window_is_reported_not_rebilled(): void
+    {
+        $subscription = $this->subscription('yearly', '2026-10-04', '2027-10-04', '2027-03-01');
+
+        $this->artisan('subscriptions:repair-billing-drift', ['--apply' => true])->assertSuccessful();
+
+        $this->assertSame('2027-03-01', $subscription->fresh()->next_invoice_at->toDateString());
+    }
+
+    #[Test]
     public function an_already_billed_term_is_left_alone(): void
     {
         $subscription = $this->subscription('yearly', '2027-10-04', '2028-10-04', '2028-09-19');
