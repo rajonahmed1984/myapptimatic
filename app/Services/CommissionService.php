@@ -71,6 +71,13 @@ class CommissionService
     */
     public function createOrUpdateEarningOnInvoicePaid(Invoice $invoice): ?CommissionEarning
     {
+        // A project maintenance invoice pays the reps added to that
+        // maintenance their set amount, every billing cycle.
+        $maintenanceEarnings = $this->createMaintenanceEarnings($invoice);
+        if ($maintenanceEarnings !== null) {
+            return $maintenanceEarnings[0] ?? null;
+        }
+
         $salesRepId = $this->resolveSalesRepIdForInvoice($invoice);
         if (! $salesRepId) {
             return null;
@@ -136,13 +143,97 @@ class CommissionService
     }
 
     /**
-     * Commission a rep earns on a subscription invoice of a customer they
-     * referred, when nothing more specific prices it: the rep's own
-     * "Subscriptions %". Anything else earns nothing here, as before.
+     * Earnings for a paid project maintenance invoice: each rep on the
+     * maintenance earns their set amount (capped at what the invoice
+     * charged). Returns null when the invoice is not for a maintenance with
+     * reps, so the usual invoice rules apply instead.
+     *
+     * @return array<int, CommissionEarning>|null
+     */
+    private function createMaintenanceEarnings(Invoice $invoice): ?array
+    {
+        if (! $invoice->maintenance_id) {
+            return null;
+        }
+
+        $reps = DB::table('project_maintenance_sales_representative')
+            ->where('project_maintenance_id', $invoice->maintenance_id)
+            ->where('amount', '>', 0)
+            ->pluck('amount', 'sales_representative_id');
+
+        if ($reps->isEmpty()) {
+            return null;
+        }
+
+        $invoice->loadMissing('maintenance:id,project_id');
+        $paidAmount = (float) $invoice->total;
+
+        return DB::transaction(function () use ($invoice, $reps, $paidAmount) {
+            $now = Carbon::now();
+            $earnings = [];
+
+            foreach ($reps as $repId => $amount) {
+                $repId = (int) $repId;
+                $idempotencyKey = sprintf('invoice:%s:rep:%s:source:project_maintenance', $invoice->id, $repId);
+                $earning = CommissionEarning::lockForUpdate()->where('idempotency_key', $idempotencyKey)->first();
+
+                $payload = [
+                    'sales_representative_id' => $repId,
+                    'source_type' => 'project_maintenance',
+                    'source_id' => $invoice->maintenance_id,
+                    'invoice_id' => $invoice->id,
+                    'subscription_id' => null,
+                    'project_id' => $invoice->maintenance?->project_id,
+                    'customer_id' => $invoice->customer_id,
+                    'currency' => $invoice->currency,
+                    'paid_amount' => $paidAmount,
+                    'commission_amount' => round(min((float) $amount, max(0, $paidAmount)), 2),
+                    'status' => 'payable',
+                    'earned_at' => $now,
+                    'payable_at' => $now,
+                    'idempotency_key' => $idempotencyKey,
+                ];
+
+                if (! $earning) {
+                    $earning = CommissionEarning::create($payload);
+                    $this->logStatusChange($earning, null, 'payable', 'maintenance_invoice_paid');
+                } elseif (! in_array($earning->status, ['paid', 'reversed'], true)) {
+                    $earning->update($payload);
+                }
+
+                // Before maintenance commission existed, this invoice may have
+                // been given an empty "plan" earning for the customer's rep.
+                CommissionEarning::query()
+                    ->where('invoice_id', $invoice->id)
+                    ->where('sales_representative_id', $repId)
+                    ->where('source_type', 'plan')
+                    ->where('commission_amount', 0)
+                    ->whereNotIn('status', ['paid', 'reversed'])
+                    ->update(['status' => 'reversed', 'reversed_at' => $now]);
+
+                $earnings[] = $earning;
+            }
+
+            return $earnings;
+        });
+    }
+
+    /**
+     * Commission a rep earns on a subscription invoice when nothing more
+     * specific prices it: the rep's own "Subscriptions %". Applies when the
+     * rep is assigned to the subscription or referred the customer, so a
+     * rep added without a commission amount no longer earns nothing.
      */
     private function referralCommission(Invoice $invoice, int $salesRepId, float $paidAmount): float
     {
-        if (! $invoice->subscription_id || (int) ($invoice->customer?->referred_by_sales_rep_id ?? 0) !== $salesRepId) {
+        if (! $invoice->subscription_id) {
+            return 0.0;
+        }
+
+        $assigned = (int) ($invoice->subscription?->sales_rep_id ?? 0) === $salesRepId;
+        $referred = (int) ($invoice->customer?->referred_by_sales_rep_id ?? 0) === $salesRepId;
+
+        if (! $assigned && ! $referred) {
             return 0.0;
         }
 

@@ -565,6 +565,21 @@ export default function Form({
                                         : 'Enter percentage (0-100).'}
                             </p>
                             {errors?.sales_rep_commission_percent ? <p className="mt-1 text-xs text-rose-600">{errors.sales_rep_commission_percent}</p> : null}
+                            {(() => {
+                                // Leaving commission empty falls back to the rep's own Subscriptions %.
+                                const rep = sales_reps.find((item) => String(item.id) === selectedSalesRepId);
+                                if (!rep || String(commissionPercent).trim() !== '') return null;
+
+                                return rep.subscription_commission_percentage ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Empty: {rep.name}'s own {rep.subscription_commission_percentage}% applies to each paid invoice.
+                                    </p>
+                                ) : (
+                                    <p className="mt-1 text-xs font-semibold text-amber-700">
+                                        No commission set, and {rep.name} has no Subscriptions %. They will earn nothing on this subscription.
+                                    </p>
+                                );
+                            })()}
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>

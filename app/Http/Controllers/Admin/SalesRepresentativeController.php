@@ -740,6 +740,7 @@ class SalesRepresentativeController extends Controller
                 $sourceLabel = match ($sourceType) {
                     'project' => 'Project',
                     'plan', 'maintenance' => 'Products / Services',
+                    'project_maintenance' => 'Project maintenance',
                     default => ucfirst($sourceType),
                 };
 
@@ -1437,6 +1438,7 @@ class SalesRepresentativeController extends Controller
         return match ($sourceType) {
             'project' => 'Project',
             'plan', 'maintenance' => 'Products / Services',
+            'project_maintenance' => 'Project maintenance',
             default => ucfirst($sourceType),
         };
     }

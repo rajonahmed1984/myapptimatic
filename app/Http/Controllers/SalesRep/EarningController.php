@@ -41,7 +41,12 @@ class EarningController extends Controller
             'earnings' => $earnings->getCollection()->map(function (CommissionEarning $earning) {
                 return [
                     'id' => $earning->id,
-                    'source_type' => ucfirst((string) $earning->source_type),
+                    'source_type' => match ((string) $earning->source_type) {
+                        'project' => 'Project',
+                        'plan', 'maintenance' => 'Products / Services',
+                        'project_maintenance' => 'Project maintenance',
+                        default => ucfirst((string) $earning->source_type),
+                    },
                     'source_label' => $earning->invoice
                         ? 'Invoice #'.$earning->invoice->id
                         : ($earning->project ? 'Project #'.$earning->project->id : null),

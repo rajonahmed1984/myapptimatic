@@ -51,7 +51,7 @@ class SubscriptionController extends Controller
 
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
-        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
+        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status', 'subscription_commission_percentage']);
 
         return Inertia::render(
             'Admin/Subscriptions/Form',
@@ -193,7 +193,7 @@ class SubscriptionController extends Controller
         ]);
         $customers = Customer::query()->orderBy('name')->get();
         $plans = Plan::query()->with('product')->orderBy('name')->get();
-        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status']);
+        $salesReps = SalesRepresentative::orderBy('name')->get(['id', 'name', 'status', 'subscription_commission_percentage']);
 
         return Inertia::render(
             'Admin/Subscriptions/Form',
@@ -1028,6 +1028,9 @@ class SubscriptionController extends Controller
                 'id' => $rep->id,
                 'name' => (string) $rep->name,
                 'status' => (string) $rep->status,
+                'subscription_commission_percentage' => $rep->subscription_commission_percentage !== null
+                    ? (float) $rep->subscription_commission_percentage
+                    : null,
             ])->values()->all(),
             'form' => [
                 'action' => $isEdit
