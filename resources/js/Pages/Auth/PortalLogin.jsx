@@ -25,6 +25,7 @@ const GoogleIcon = () => (
 
 
 export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', form = {}, routes = {}, hint = null, recaptcha = {} }) {
+    const salesRepSignup = portal === 'web' ? routes?.sales_rep_register : null;
     const { errors = {}, flash = {}, branding = {}, csrf_token: csrfToken = '' } = usePage().props;
 
     const hasErrors = Object.keys(errors).length > 0;
@@ -202,6 +203,15 @@ export default function PortalLogin({ pageTitle = 'Sign In', portal = 'web', for
                                     {hint.text}
                                 </a>
                                 {portal === 'web' ? '.' : null}
+                            </p>
+                        ) : null}
+
+                        {salesRepSignup ? (
+                            <p className="mt-2 text-center text-xs text-slate-500">
+                                Want to earn commission by referring customers?{' '}
+                                <a href={salesRepSignup} className="font-semibold text-teal-600 hover:text-teal-500" data-native="true">
+                                    Become a sales representative
+                                </a>
                             </p>
                         ) : null}
                     </div>

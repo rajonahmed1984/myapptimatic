@@ -287,7 +287,7 @@ class AdminNotificationService
             '{{rep_name}}' => $request->salesRep?->name ?? '--',
             '{{amount}}' => number_format((float) $request->amount, 2).' '.$request->currency,
             '{{note}}' => $request->note ?: '--',
-            '{{url}}' => route('admin.sales-reps.show', ['sales_rep' => $request->sales_representative_id, 'tab' => 'payouts']),
+            '{{url}}' => route('admin.payout-requests.index'),
         ]);
 
         $this->sendGeneric($recipients, $subject, $bodyHtml, $this->resolveFromEmail(null), $companyName, [], MailCategory::BILLING);

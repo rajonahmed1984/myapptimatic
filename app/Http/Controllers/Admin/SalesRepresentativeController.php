@@ -1285,37 +1285,17 @@ class SalesRepresentativeController extends Controller
      */
     private function serializePayoutRequests(SalesRepresentative $salesRep): array
     {
-        $dateTimeFormat = (string) config('app.datetime_format', 'd-m-Y h:i A');
-        $methodNames = \App\Http\Controllers\SalesRep\PayoutController::methodNames();
         $availability = app(SalesRepPayoutRequestService::class)->availability($salesRep);
+        $methodNames = \App\Http\Controllers\SalesRep\PayoutController::methodNames();
 
         return CommissionPayoutRequest::query()
-            ->with('processor:id,name')
+            ->with(['processor:id,name', 'salesRep:id,name,email'])
             ->where('sales_representative_id', $salesRep->id)
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->latest('id')
             ->limit(20)
             ->get()
-            ->map(fn (CommissionPayoutRequest $item) => [
-                'id' => $item->id,
-                'amount' => (float) $item->amount,
-                'paid_amount' => $item->paid_amount !== null ? (float) $item->paid_amount : null,
-                'currency' => $item->currency,
-                'status' => $item->status,
-                'note' => $item->note,
-                'admin_note' => $item->admin_note,
-                'method' => $item->payout_method ? ($methodNames[$item->payout_method] ?? $item->payout_method) : null,
-                'reference' => $item->reference,
-                'processed_by' => $item->processor?->name,
-                'requested_at' => $item->created_at?->format($dateTimeFormat),
-                'processed_at' => $item->processed_at?->format($dateTimeFormat),
-                // What can actually be paid now, in case it changed since the request.
-                'payable_now' => $item->isPending() ? max(0, min((float) $item->amount, (float) $availability['available'])) : null,
-                'routes' => $item->isPending() ? [
-                    'approve' => route('admin.sales-reps.payout-requests.approve', [$salesRep, $item]),
-                    'reject' => route('admin.sales-reps.payout-requests.reject', [$salesRep, $item]),
-                ] : null,
-            ])
+            ->map(fn (CommissionPayoutRequest $item) => \App\Support\PayoutRequestPresenter::adminRow($item, $availability, $methodNames))
             ->values()
             ->all();
     }

@@ -619,6 +619,9 @@ Route::middleware([
     Route::post('sales-reps/{sales_rep}/impersonate', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'impersonate'])->name('sales-reps.impersonate');
     Route::post('sales-reps/{sales_rep}/approve', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'approve'])->name('sales-reps.approve');
     Route::post('sales-reps/{sales_rep}/recovery', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeRecovery'])->name('sales-reps.recovery');
+    Route::get('payout-requests', [\App\Http\Controllers\Admin\PayoutRequestController::class, 'index'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('payout-requests.index');
     Route::post('sales-reps/{sales_rep}/payout-requests/{payoutRequest}/approve', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'approvePayoutRequest'])->name('sales-reps.payout-requests.approve');
     Route::post('sales-reps/{sales_rep}/payout-requests/{payoutRequest}/reject', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'rejectPayoutRequest'])->name('sales-reps.payout-requests.reject');
     Route::post('sales-reps/{sales_rep}/advance-payment', [\App\Http\Controllers\Admin\SalesRepresentativeController::class, 'storeAdvancePayment'])->name('sales-reps.advance-payment');

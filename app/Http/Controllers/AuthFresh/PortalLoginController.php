@@ -106,6 +106,7 @@ class PortalLoginController extends Controller
             'routes' => [
                 'submit' => $submitByPortal[$portal] ?? route('login.attempt', [], false),
                 'forgot' => $forgotByPortal[$portal] ?? null,
+                'sales_rep_register' => $portal === 'web' ? route('register', ['as' => 'sales_rep'], false) : null,
             ],
             'hint' => $hintByPortal[$portal] ?? null,
             'recaptcha' => [
