@@ -649,6 +649,7 @@ Route::middleware([
     Route::post('invoices/bulk-mark-cancelled', [AdminInvoiceController::class, 'bulkMarkCancelled'])->name('invoices.bulk-mark-cancelled');
     Route::post('invoices/bulk-duplicate', [AdminInvoiceController::class, 'bulkDuplicate'])->name('invoices.bulk-duplicate');
     Route::post('invoices/bulk-merge', [AdminInvoiceController::class, 'bulkMerge'])->name('invoices.bulk-merge');
+    Route::post('invoices/bulk-delete', [AdminInvoiceController::class, 'bulkDestroy'])->name('invoices.bulk-delete');
     Route::get('invoices/paid', [AdminInvoiceController::class, 'paid'])->name('invoices.paid');
     Route::get('invoices/unpaid', [AdminInvoiceController::class, 'unpaid'])->name('invoices.unpaid');
     Route::get('invoices/overdue', [AdminInvoiceController::class, 'overdue'])->name('invoices.overdue');

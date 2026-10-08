@@ -1275,6 +1275,33 @@ class InvoiceController extends Controller
             ->with('status', 'Invoice deleted.');
     }
 
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'invoice_ids' => ['required', 'array'],
+            'invoice_ids.*' => ['exists:invoices,id'],
+        ]);
+
+        $deletedCount = 0;
+
+        foreach (Invoice::whereIn('id', $data['invoice_ids'])->get() as $invoice) {
+            SystemLogger::write('activity', 'Invoice deleted (bulk).', [
+                'invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+                'status' => $invoice->status,
+            ], $request->user()?->id, $request->ip());
+
+            $invoice->delete();
+            $deletedCount++;
+        }
+
+        if ($deletedCount === 0) {
+            return redirect()->back()->with('error', 'No invoices were selected.');
+        }
+
+        return redirect()->back()->with('status', "Deleted {$deletedCount} invoice(s) successfully.");
+    }
+
     private function listByStatus(?string $status, string $title, ?Project $project = null): InertiaResponse
     {
         $search = trim((string) request()->query('search', ''));

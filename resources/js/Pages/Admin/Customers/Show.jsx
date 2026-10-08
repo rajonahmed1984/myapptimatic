@@ -217,6 +217,24 @@ export default function Show({
         });
     };
 
+    const handleBulkDelete = async () => {
+        if (selectedInvoiceIds.length === 0) {
+            window.showToast?.('Please select at least one invoice.', 'warning');
+            return;
+        }
+        const count = selectedInvoiceIds.length;
+        const ok = await window.confirmModal?.({
+            message: `Are you sure you want to delete the ${count} selected invoice(s)? This cannot be undone.`,
+            title: 'Delete Invoices',
+            variant: 'danger',
+            confirmText: 'Yes, Delete',
+        });
+        if (!ok) return;
+        router.post(routes?.bulk_delete_invoices, { invoice_ids: selectedInvoiceIds }, {
+            onSuccess: () => setSelectedInvoiceIds([]),
+        });
+    };
+
     const plan = useMemo(
         () => service_plans.find((item) => String(item.id) === String(planId)) || null,
         [service_plans, planId]
@@ -1079,7 +1097,7 @@ export default function Show({
                                 type="button"
                                 className="rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-white font-semibold shadow-sm transition disabled:opacity-50 ml-auto"
                                 disabled={selectedInvoiceIds.length === 0}
-                                onClick={() => alert("Delete is not implemented yet.")}
+                                onClick={handleBulkDelete}
                             >
                                 Delete
                             </button>

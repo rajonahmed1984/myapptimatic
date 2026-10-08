@@ -798,6 +798,7 @@ class CustomerController extends Controller
                 'bulk_mark_cancelled_invoices' => route('admin.invoices.bulk-mark-cancelled', [], false),
                 'bulk_duplicate_invoices' => route('admin.invoices.bulk-duplicate', [], false),
                 'bulk_merge_invoices' => route('admin.invoices.bulk-merge', [], false),
+                'bulk_delete_invoices' => route('admin.invoices.bulk-delete', [], false),
             ],
         ]);
     }
