@@ -15,13 +15,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Apptimatic') }}">
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
+        // Chrome/Edge fire this once, possibly before React mounts. Keep it so
+        // the install banner and /install page can show the native prompt.
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            window.__pwaInstallPrompt = event;
+            window.dispatchEvent(new Event('pwa:installable'));
+        });
+        window.addEventListener('appinstalled', () => {
+            window.__pwaInstallPrompt = null;
+            window.dispatchEvent(new Event('pwa:installed'));
+        });
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').catch(() => {});

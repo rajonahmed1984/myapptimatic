@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountingController as AdminAccountingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\PushDeviceController;
+use App\Http\Controllers\WebPushSubscriptionController;
 use App\Http\Controllers\Admin\AutomationStatusController;
 use App\Http\Controllers\Admin\AiBusinessStatusController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -121,6 +122,13 @@ Route::get('/__ui/react-sandbox', function () {
         'generated_at' => now()->toIso8601String(),
     ]);
 })->middleware(HandleInertiaRequests::class)->name('ui.react-sandbox');
+
+// Shareable "add to home screen" page for the PWA. iPhones cannot sideload an
+// app file the way Android takes an APK, so this walks people through
+// installing the web app from their browser instead.
+Route::get('/install', fn () => Inertia::render('Public/InstallApp'))
+    ->middleware(HandleInertiaRequests::class)
+    ->name('pwa.install');
 
 Route::redirect('/admin', '/admin/login');
 Route::get('/employee', fn () => redirect()->route('employee.login'))->name('employee.home');
@@ -370,6 +378,8 @@ Route::post('/logout', [LogoutController::class, 'logout'])
 Route::middleware(['auth:web,employee,sales,support', 'throttle:30,1'])->group(function () {
     Route::post('/push/devices', [PushDeviceController::class, 'store'])->name('push-devices.store');
     Route::delete('/push/devices', [PushDeviceController::class, 'destroy'])->name('push-devices.destroy');
+    Route::post('/push/web-subscriptions', [WebPushSubscriptionController::class, 'store'])->name('web-push-subscriptions.store');
+    Route::delete('/push/web-subscriptions', [WebPushSubscriptionController::class, 'destroy'])->name('web-push-subscriptions.destroy');
 });
 Route::post('/impersonate/stop', [AuthController::class, 'stopImpersonate'])
     ->name('impersonate.stop')

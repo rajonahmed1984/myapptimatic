@@ -788,6 +788,17 @@ select::-ms-expand {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.pwa-banner {
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 767px) {
+    /* Sit above the portal bottom nav instead of covering it. */
+    body:has(.mobile-bottom-nav) .pwa-banner {
+        bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 @media (max-width: 767px) {
     /* Prevent iOS text zoom when focusing inputs */
     input:not([type="checkbox"]):not([type="radio"]),

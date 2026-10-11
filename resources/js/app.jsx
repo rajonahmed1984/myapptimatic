@@ -5,6 +5,7 @@ import { formatDate, parseDate } from './utils/datetime';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
 import { installCsrfTokenRefresh, refreshCsrfToken } from './csrf';
+import PwaRuntime from './Components/Pwa/PwaRuntime';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
 const DEFAULT_APP_NAME = 'MyApptimatic';
@@ -528,6 +529,7 @@ function DateInputRuntimeAdapter({ App, props }) {
     return (
         <>
             <App {...props} />
+            <PwaRuntime initialPage={props?.initialPage} />
         </>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\HeaderStatsService;
+use App\Services\Push\WebPushClient;
 use App\Support\AuthFresh\Portal;
 use App\Support\UiFeature;
 use Illuminate\Http\Request;
@@ -50,6 +51,11 @@ class HandleInertiaRequests extends Middleware
             $avatarUrl = \App\Support\PublicStorageUrl::fromPath(is_string($avatarPath) ? $avatarPath : null);
         }
 
+        // Browsers subscribe to push with this key; null hides the prompt. Only
+        // customer accounts are sent pushes today (PushNotificationService::toCustomer).
+        $webPush = app(WebPushClient::class);
+        $webPushKey = $user?->customer_id && $webPush->isConfigured() ? $webPush->publicKey() : null;
+
         return array_merge(parent::share($request), [
             'app' => [
                 'name' => config('app.name'),
@@ -62,6 +68,9 @@ class HandleInertiaRequests extends Middleware
                 'company_name' => (string) ($portalBranding['company_name'] ?? config('app.name')),
                 'logo_url' => $portalBranding['logo_url'] ?? null,
                 'favicon_url' => $portalBranding['favicon_url'] ?? null,
+            ],
+            'web_push' => [
+                'public_key' => $webPushKey,
             ],
             'routes' => [
                 'home' => url('/'),

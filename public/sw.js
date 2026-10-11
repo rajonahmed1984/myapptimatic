@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apptimatic-pwa-v1';
+const CACHE_NAME = 'apptimatic-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -127,6 +127,48 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         fetch(request).catch(async () => {
             return caches.match(request);
+        })
+    );
+});
+
+// Web Push from PushNotificationService (WebPushClient). The payload is
+// { title, body, url }; url is a portal path opened when the notification is tapped.
+self.addEventListener('push', (event) => {
+    let payload = {};
+    try {
+        payload = event.data ? event.data.json() : {};
+    } catch (error) {
+        payload = { body: event.data ? event.data.text() : '' };
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(payload.title || 'Apptimatic', {
+            body: payload.body || '',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-maskable-192x192.png',
+            data: { url: payload.url || '/' },
+        })
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const target = new URL(event.notification.data?.url || '/', self.location.origin);
+    if (target.origin !== self.location.origin) {
+        return;
+    }
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windows) => {
+            // Reuse an open window of the app instead of stacking new ones.
+            const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+            if (existing) {
+                await existing.focus();
+                return existing.navigate(target.href).catch(() => {});
+            }
+
+            return self.clients.openWindow(target.href);
         })
     );
 });

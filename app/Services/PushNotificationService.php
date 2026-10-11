@@ -4,27 +4,32 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\PushDevice;
+use App\Models\WebPushSubscription;
 use App\Services\Push\FcmClient;
+use App\Services\Push\WebPushClient;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 use function Illuminate\Support\defer;
 
 /**
- * Push notifications to the mobile app. Sending never slows down or breaks the
- * action that triggered it: on a web request it runs after the response has
- * been sent, and a failure is only logged.
+ * Push notifications to the mobile app (Firebase) and to browsers and the
+ * installed web app (Web Push). Sending never slows down or breaks the action
+ * that triggered it: on a web request it runs after the response has been
+ * sent, and a failure is only logged.
  */
 class PushNotificationService
 {
     public function __construct(
-        private readonly FcmClient $fcm
+        private readonly FcmClient $fcm,
+        private readonly WebPushClient $webPush
     ) {
     }
 
     public function isConfigured(): bool
     {
-        return $this->fcm->isConfigured();
+        return $this->fcm->isConfigured() || $this->webPush->isConfigured();
     }
 
     /** Every app install a user of this customer account is signed in on. */
@@ -37,7 +42,7 @@ class PushNotificationService
         $customerId = $customer->id;
 
         $this->dispatch(fn () => $this->deliver(
-            PushDevice::query()->whereHas('user', fn (Builder $query) => $query->where('customer_id', $customerId)),
+            fn (Builder $recipients) => $recipients->whereHas('user', fn (Builder $query) => $query->where('customer_id', $customerId)),
             $title,
             $body,
             $url
@@ -55,7 +60,7 @@ class PushNotificationService
         }
 
         $this->dispatch(fn () => $this->deliver(
-            PushDevice::query()->whereIn('user_id', $userIds),
+            fn (Builder $recipients) => $recipients->whereIn('user_id', $userIds),
             $title,
             $body,
             $url
@@ -65,12 +70,11 @@ class PushNotificationService
     /**
      * Send straight away and report the outcome (used by push:test).
      *
-     * @param  Builder<PushDevice>  $devices
      * @return array{sent: int, invalid: int, failed: int}
      */
-    public function sendNow(Builder $devices, string $title, string $body, ?string $url = null): array
+    public function sendNowToUser(int $userId, string $title, string $body, ?string $url = null): array
     {
-        return $this->deliver($devices, $title, $body, $url);
+        return $this->deliver(fn (Builder $recipients) => $recipients->where('user_id', $userId), $title, $body, $url);
     }
 
     private function dispatch(callable $send): void
@@ -93,21 +97,37 @@ class PushNotificationService
     }
 
     /**
-     * @param  Builder<PushDevice>  $devices
+     * @param  Closure(Builder): Builder  $recipients  Narrows a device or subscription query to the people to notify.
      * @return array{sent: int, invalid: int, failed: int}
      */
-    private function deliver(Builder $devices, string $title, string $body, ?string $url): array
+    private function deliver(Closure $recipients, string $title, string $body, ?string $url): array
     {
         $result = ['sent' => 0, 'invalid' => 0, 'failed' => 0];
+        $title = $this->clip($title, 80);
+        $body = $this->clip($body, 180);
+        $url = $this->relativeUrl($url);
 
-        if (! $this->fcm->isConfigured()) {
-            return $result;
+        if ($this->fcm->isConfigured()) {
+            $this->deliverToApps($recipients(PushDevice::query()), $title, $body, $url, $result);
         }
 
-        $data = ['url' => $this->relativeUrl($url)];
+        if ($this->webPush->isConfigured()) {
+            $this->deliverToBrowsers($recipients(WebPushSubscription::query()), $title, $body, $url, $result);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  Builder<PushDevice>  $devices
+     * @param  array{sent: int, invalid: int, failed: int}  $result
+     */
+    private function deliverToApps(Builder $devices, string $title, string $body, ?string $url, array &$result): void
+    {
+        $data = ['url' => $url];
 
         foreach ($devices->get(['id', 'token']) as $device) {
-            $status = $this->fcm->send($device->token, $this->clip($title, 80), $this->clip($body, 180), $data);
+            $status = $this->fcm->send($device->token, $title, $body, $data);
 
             if ($status === FcmClient::SENT) {
                 $result['sent']++;
@@ -118,13 +138,40 @@ class PushNotificationService
                 $result['failed']++;
             }
         }
-
-        return $result;
     }
 
     /**
-     * The app's WebView is already on the portal, so a path is all it needs
-     * (and it keeps working when APP_URL differs from the app's server URL).
+     * @param  Builder<WebPushSubscription>  $subscriptions
+     * @param  array{sent: int, invalid: int, failed: int}  $result
+     */
+    private function deliverToBrowsers(Builder $subscriptions, string $title, string $body, ?string $url, array &$result): void
+    {
+        $payload = ['title' => $title, 'body' => $body, 'url' => $url];
+
+        foreach ($subscriptions->get(['id', 'endpoint', 'public_key', 'auth_token']) as $subscription) {
+            try {
+                $status = $this->webPush->send($subscription->endpoint, $subscription->public_key, $subscription->auth_token, $payload);
+            } catch (\Throwable $exception) {
+                // One bad subscription must not stop the rest.
+                report($exception);
+                $status = WebPushClient::FAILED;
+            }
+
+            if ($status === WebPushClient::SENT) {
+                $result['sent']++;
+            } elseif ($status === WebPushClient::INVALID_SUBSCRIPTION) {
+                $result['invalid']++;
+                $subscription->delete();
+            } else {
+                $result['failed']++;
+            }
+        }
+    }
+
+    /**
+     * The app's WebView and the service worker are already on the portal, so a
+     * path is all they need (and it keeps working when APP_URL differs from the
+     * app's server URL).
      */
     private function relativeUrl(?string $url): ?string
     {

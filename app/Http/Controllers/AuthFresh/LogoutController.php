@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AuthFresh;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\PushDeviceController;
+use App\Http\Controllers\WebPushSubscriptionController;
 use App\Support\AuthFresh\Portal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class LogoutController extends Controller
         $portal = $this->resolvePortal($request);
 
         PushDeviceController::forgetSessionDevice($request);
+        WebPushSubscriptionController::forgetSessionSubscription($request);
 
         foreach (Portal::guards() as $guard) {
             Auth::guard($guard)->logout();

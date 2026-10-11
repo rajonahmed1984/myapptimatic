@@ -147,9 +147,26 @@ add at least one native capability — push notifications, biometric login, came
 upload for payment proofs, or offline access to a key screen. The Capacitor
 plugins for all of these install the same way as the ones already wired up.
 
-## Not included
+## iPhone without the App Store (PWA)
 
-- **PWA**: this project is not a Progressive Web App. There is no web manifest or
-  service worker, and Capacitor does not need one.
-- **Push notifications**: `@capacitor/push-notifications` plus a Firebase project
-  (Android) and APNs key (iOS) are required; nothing is configured yet.
+The portal is also a Progressive Web App (`public/manifest.json`, `public/sw.js`),
+so iPhone users can install it from Safari without an App Store build. Send them
+to `/install`: it detects the device and shows the install button (Android,
+desktop Chrome/Edge) or the Share > Add to Home Screen steps (iOS). Phones also
+see a small install banner on the login page and in the portals. Installing needs
+HTTPS on the live site.
+
+Notifications reach the installed web app (and desktop browsers) through Web
+Push, with no Firebase involved. Set it up once per server:
+
+```bash
+php artisan migrate
+php artisan push:vapid-keys --write   # adds VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY to .env
+php artisan config:clear
+```
+
+Keep the same keys afterwards: replacing them (`--force`) cuts off every browser
+that already allowed notifications. Customers are asked to allow notifications
+inside the installed app on phones (iOS 16.4 or later only pushes there) and in
+the browser on computers. `php artisan push:test <user>` sends to both the native
+app and browsers.

@@ -63,4 +63,13 @@ return [
         'channel_id' => 'general',
     ],
 
+    'webpush' => [
+        // VAPID keys for browser push (the installed web app on iPhone, desktop
+        // browsers). Generate them once with `php artisan push:vapid-keys`.
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        // mailto: or https URL push services can contact; defaults to MAIL_FROM_ADDRESS.
+        'subject' => env('VAPID_SUBJECT'),
+    ],
+
 ];
