@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Role;
+use App\Models\User;
 use App\Services\HeaderStatsService;
 use App\Services\Push\WebPushClient;
 use App\Support\AuthFresh\Portal;
@@ -19,6 +21,38 @@ class HandleInertiaRequests extends Middleware
     public function rootView(Request $request): string
     {
         return 'app';
+    }
+
+    /**
+     * The "switch portal" link for a client who is also a sales rep.
+     *
+     * @return array{target: string, label: string, url: string}|null
+     */
+    private function portalSwitch(mixed $user): ?array
+    {
+        if (! $user instanceof User || $user->role !== Role::CLIENT) {
+            return null;
+        }
+
+        // Decided by the active guard, not Portal::fromRequest(): that falls
+        // back to the Referer, which still points at /sales right after a switch.
+        if ($user->isActingAsSalesRep()) {
+            return [
+                'target' => 'client',
+                'label' => 'Switch to Client Portal',
+                'url' => route('portal.switch', ['target' => 'client'], false),
+            ];
+        }
+
+        if ($user->canUseSalesPortalAsClient()) {
+            return [
+                'target' => 'sales',
+                'label' => 'Switch to Sales Portal',
+                'url' => route('portal.switch', ['target' => 'sales'], false),
+            ];
+        }
+
+        return null;
     }
 
     public function share(Request $request): array
@@ -94,6 +128,7 @@ class HandleInertiaRequests extends Middleware
                 'guard' => Portal::guard($portal),
                 'is_impersonating' => (bool) $impersonatorId,
             ],
+            'portal_switch' => fn () => $this->portalSwitch($user),
             'stats' => [
                 'admin' => $headerStats->admin($request),
                 'employee' => $headerStats->employee(),

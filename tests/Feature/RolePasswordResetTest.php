@@ -77,6 +77,33 @@ class RolePasswordResetTest extends TestCase
         $this->assertTrue(DB::table('password_reset_tokens_support')->where('email', $user->email)->exists());
     }
 
+    public function test_main_forgot_password_issues_token_in_the_users_role_broker(): void
+    {
+        Notification::fake();
+        $salesUser = User::factory()->create(['role' => Role::SALES]);
+        $clientUser = User::factory()->create(['role' => Role::CLIENT]);
+
+        $this->post(route('password.email'), ['email' => $salesUser->email])->assertSessionHas('status');
+        $this->post(route('password.email'), ['email' => $clientUser->email])->assertSessionHas('status');
+
+        $this->assertTrue(DB::table('password_reset_tokens_sales')->where('email', $salesUser->email)->exists());
+        $this->assertFalse(DB::table('password_reset_tokens')->where('email', $salesUser->email)->exists());
+        $this->assertTrue(DB::table('password_reset_tokens')->where('email', $clientUser->email)->exists());
+
+        Notification::assertSentTo($salesUser, ResetPasswordNotification::class, function ($notification) use ($salesUser) {
+            $this->post(route('sales.password.update'), [
+                'token' => $notification->token,
+                'email' => $salesUser->email,
+                'password' => 'new-password-123',
+                'password_confirmation' => 'new-password-123',
+            ])->assertSessionHasNoErrors();
+
+            return true;
+        });
+
+        $this->assertTrue(Hash::check('new-password-123', $salesUser->fresh()->password));
+    }
+
     public function test_employee_reset_updates_password_and_redirects(): void
     {
         $user = User::factory()->create(['role' => Role::EMPLOYEE]);

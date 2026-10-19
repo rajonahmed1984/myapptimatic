@@ -187,16 +187,22 @@ class RolePasswordResetController extends Controller
                 ->with('user:id,email,role')
                 ->first()?->user;
 
-            if ($linkedUserEmail && $linkedUserEmail->role === Role::SALES) {
+            if ($linkedUserEmail && in_array($linkedUserEmail->role, [Role::SALES, Role::CLIENT], true)) {
                 $email = $linkedUserEmail->email;
             }
         }
 
+        // A client who is also a sales rep has one login: the client password.
+        $resetsClientLogin = $role === 'sales'
+            && (bool) User::query()->where('email', $email)->first()?->canUseSalesPortalAsClient();
+
         try {
-            $status = Password::broker($config['broker'])->sendResetLink([
-                'email' => $email,
-                'role' => $config['role'],
-            ]);
+            $status = $resetsClientLogin
+                ? Password::broker()->sendResetLink(['email' => $email])
+                : Password::broker($config['broker'])->sendResetLink([
+                    'email' => $email,
+                    'role' => $config['role'],
+                ]);
         } catch (\Throwable $exception) {
             Log::error('Failed to send role password reset link', [
                 'role' => $role,

@@ -5,6 +5,7 @@ import { formatDate, parseDate } from './utils/datetime';
 import { enhanceEasyDateInputsInDocument } from './utils/easyDateEnhancer';
 import { getBreadcrumb, getPageTitle } from './utils/pageTitle';
 import { installCsrfTokenRefresh, refreshCsrfToken } from './csrf';
+import { installAppVersionWatcher } from './appVersion';
 import PwaRuntime from './Components/Pwa/PwaRuntime';
 
 const DISPLAY_DATE_PLACEHOLDER = 'DD-MM-YYYY';
@@ -161,6 +162,9 @@ if (typeof window !== 'undefined') {
     // was asleep for hours does not post a retired token and get bounced to the
     // login screen with "Session expired".
     installCsrfTokenRefresh();
+    // After a deploy, drops the old build's service-worker caches and moves
+    // idle tabs onto the new version.
+    installAppVersionWatcher();
 
     inertiaRouter.on('invalid', (event) => {
         const response = event?.detail?.response;

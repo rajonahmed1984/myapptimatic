@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-base-url" content="{{ request()->getBaseUrl() }}">
+    @php
+        $appVersion = \App\Support\AppVersion::current();
+    @endphp
+    <meta name="app-version" content="{{ $appVersion }}">
     <title inertia>{{ config('app.name', 'MyApptimatic') }}</title>
     @if(!empty($portalBranding['favicon_url']))
         <link rel="icon" href="{{ $portalBranding['favicon_url'] }}">
@@ -35,7 +39,10 @@
         });
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(() => {});
+                // The build version in the URL makes every deploy install a fresh
+                // worker (with its own cache name); updateViaCache keeps the
+                // browser from serving an old sw.js out of its HTTP cache.
+                navigator.serviceWorker.register(@json('/sw.js'.($appVersion ? '?v='.$appVersion : '')), { updateViaCache: 'none' }).catch(() => {});
             });
         }
     </script>

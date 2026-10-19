@@ -36,4 +36,10 @@
 
 <IfModule mod_headers.c>
     Header set Cache-Control "public, max-age=31536000, immutable" env=vite_versioned_asset
+
+    # Unversioned PWA files must be revalidated every time, or a browser keeps
+    # running the previous deploy's service worker and offline page.
+    <FilesMatch "^(sw\.js|manifest\.json|offline\.html)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
 </IfModule>

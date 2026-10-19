@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/react';
 import SidebarToggle from '../Layout/SidebarToggle';
 import UserDropdown from '../Layout/UserDropdown';
 import ImpersonationBanner from '../Layout/ImpersonationBanner';
+import PortalSwitchButton from '../Layout/PortalSwitchButton';
 import MobileTopBar, { isInnerPagePath } from './MobileTopBar';
 import MobileBottomNav from './MobileBottomNav';
 import MobileBottomSheet from './MobileBottomSheet';
@@ -110,6 +111,8 @@ export default function MobileAppShell({
                 </div>
 
                 {sidebarExtra}
+
+                <PortalSwitchButton />
 
                 <button
                     type="button"

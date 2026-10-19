@@ -1,4 +1,7 @@
-const CACHE_NAME = 'apptimatic-pwa-v2';
+// The page registers /sw.js?v=<build version>, so each deploy installs a new
+// worker whose activate step deletes every cache left by the previous build.
+const BUILD_VERSION = new URL(self.location.href).searchParams.get('v') || 'v2';
+const CACHE_NAME = `apptimatic-pwa-${BUILD_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -22,6 +25,7 @@ const NEVER_CACHE_PATTERNS = [
     /\/project-login/,
     /\/logout/,
     /\/csrf-token/,
+    /\/app-version/,
     /\/auth\//,
     /\/api\//,
     /\/payments\//,
@@ -47,6 +51,18 @@ self.addEventListener('activate', (event) => {
                 })
             );
         }).then(() => self.clients.claim())
+    );
+});
+
+// The page asks for this when it notices a new deploy before this worker has
+// been replaced, so no asset from the old build is served from cache.
+self.addEventListener('message', (event) => {
+    if (event.data?.type !== 'CLEAR_CACHES') {
+        return;
+    }
+
+    event.waitUntil(
+        caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
     );
 });
 

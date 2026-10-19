@@ -25,7 +25,8 @@ class PortalLoginController extends Controller
         Portal::setPortal($request, $portal);
 
         // A sales rep signed in through the shared login already has a portal.
-        if ($portal === 'web' && Auth::guard('sales')->check()) {
+        // A client who also opened the sales portal still lands on the client side.
+        if ($portal === 'web' && Auth::guard('sales')->check() && ! Auth::guard('web')->check()) {
             return redirect()->route('rep.dashboard');
         }
 

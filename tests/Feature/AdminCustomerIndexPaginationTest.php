@@ -40,6 +40,24 @@ class AdminCustomerIndexPaginationTest extends TestCase
         $this->assertCount(65, array_unique($seen));
     }
 
+    public function test_inactive_customers_are_listed_after_active_ones(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $oldActive = Customer::create(['name' => 'Old Active', 'status' => 'active']);
+        $oldActive->forceFill(['created_at' => now()->subDays(10)])->save();
+        $newInactive = Customer::create(['name' => 'New Inactive', 'status' => 'inactive']);
+        $newActive = Customer::create(['name' => 'New Active', 'status' => 'active']);
+
+        $props = $this->actingAs($admin)
+            ->get(route('admin.customers.index'))
+            ->viewData('page')['props'];
+
+        $this->assertSame(
+            [$newActive->id, $oldActive->id, $newInactive->id],
+            array_column($props['customers'], 'id')
+        );
+    }
+
     public function test_pagination_keeps_search_query(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

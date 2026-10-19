@@ -15,6 +15,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\Concerns\HasActivityTracking;
 use App\Notifications\ResetPasswordNotification;
+use Illuminate\Support\Facades\Auth;
 
 class User extends Authenticatable
 {
@@ -142,9 +143,40 @@ class User extends Authenticatable
         return $this->role === Role::SUB_ADMIN;
     }
 
+    /**
+     * A client can also hold a sales rep profile without giving up the client
+     * role. Inside the sales portal (EnsureSalesRep switches the default guard
+     * to "sales") that account acts as a sales rep, everywhere else as a client.
+     */
     public function isSales(): bool
     {
-        return $this->role === Role::SALES;
+        return $this->role === Role::SALES || $this->isActingAsSalesRep();
+    }
+
+    public function salesRepresentative(): HasOne
+    {
+        return $this->hasOne(SalesRepresentative::class);
+    }
+
+    /**
+     * True for a client account linked to an active sales rep profile, which
+     * may switch between the client and sales portals with one login.
+     */
+    public function canUseSalesPortalAsClient(): bool
+    {
+        return $this->role === Role::CLIENT
+            && SalesRepresentative::query()
+                ->where('user_id', $this->id)
+                ->where('status', 'active')
+                ->exists();
+    }
+
+    public function isActingAsSalesRep(): bool
+    {
+        return $this->role === Role::CLIENT
+            && $this->exists
+            && Auth::getDefaultDriver() === 'sales'
+            && (int) Auth::guard('sales')->id() === (int) $this->id;
     }
 
     public function isSupport(): bool
@@ -154,7 +186,7 @@ class User extends Authenticatable
 
     public function isClient(): bool
     {
-        return $this->role === Role::CLIENT;
+        return $this->role === Role::CLIENT && ! $this->isActingAsSalesRep();
     }
 
     public function isClientProject(): bool

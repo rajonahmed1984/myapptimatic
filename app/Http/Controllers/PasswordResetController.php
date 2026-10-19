@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
@@ -50,8 +51,17 @@ class PasswordResetController extends Controller
 
         // If we found a user (either directly or via customer), send reset link
         if ($user) {
+            // The emailed link points at the role's own reset page (see AuthServiceProvider),
+            // so the token must be stored in that role's broker or the link will be "invalid".
+            $broker = match ($user->role) {
+                Role::EMPLOYEE => 'employees',
+                Role::SALES => 'sales',
+                Role::SUPPORT => 'support',
+                default => null,
+            };
+
             try {
-                $status = Password::sendResetLink([
+                $status = Password::broker($broker)->sendResetLink([
                     'email' => $user->email,
                 ]);
             } catch (\Throwable $exception) {

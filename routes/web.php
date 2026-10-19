@@ -115,6 +115,20 @@ Route::get('/csrf-token', function () {
     ]);
 })->middleware('nocache')->name('csrf.token');
 
+// The build the server is running right now. Open tabs poll this and, once a
+// deploy changes it, clear their service-worker caches and reload.
+Route::get('/app-version', function () {
+    return response()->json([
+        'version' => \App\Support\AppVersion::current(),
+    ]);
+})->middleware('nocache')->name('app.version');
+
+// A client who is also a sales rep hops between the two portals on one login.
+Route::post('/portal/switch/{target}', \App\Http\Controllers\AuthFresh\PortalSwitchController::class)
+    ->whereIn('target', ['sales', 'client'])
+    ->middleware('nocache')
+    ->name('portal.switch');
+
 Route::get('/__ui/react-sandbox', function () {
     abort_unless(UiFeature::enabled(UiFeature::REACT_SANDBOX), 404);
 

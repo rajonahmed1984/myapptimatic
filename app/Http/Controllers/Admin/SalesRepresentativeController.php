@@ -114,6 +114,7 @@ class SalesRepresentativeController extends Controller
                 'id' => $employee->id,
                 'name' => $employee->name,
             ])->values(),
+            'client_accounts' => $this->linkableClientAccounts(),
             'form' => [
                 'action' => route('admin.sales-reps.store'),
                 'method' => 'POST',
@@ -130,7 +131,8 @@ class SalesRepresentativeController extends Controller
     {
         $rules = [
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'user_id' => ['nullable', 'exists:users,id'],
+            // One rep profile per login account.
+            'user_id' => ['nullable', 'exists:users,id', Rule::unique('sales_representatives', 'user_id')],
             'name' => [
                 Rule::requiredIf(! $request->filled('user_id')),
                 'string',
@@ -171,7 +173,11 @@ class SalesRepresentativeController extends Controller
         ]);
 
         if ($user) {
-            $user->update(['role' => Role::SALES]);
+            // A client keeps the client role and reaches the sales portal from
+            // the same login; any other linked account becomes a sales account.
+            if ($user->role !== Role::CLIENT) {
+                $user->update(['role' => Role::SALES]);
+            }
         } elseif (! empty($data['user_password'])) {
             $user = User::create([
                 'name' => $salesRep->name,
@@ -213,6 +219,7 @@ class SalesRepresentativeController extends Controller
                 'id' => $salesRep->id,
                 'user_name' => $salesRep->user?->name,
                 'user_email' => $salesRep->user?->email,
+                'is_client_account' => $salesRep->user?->role === Role::CLIENT,
             ],
             'employees' => $employees->map(fn (Employee $employee) => [
                 'id' => $employee->id,
@@ -259,14 +266,18 @@ class SalesRepresentativeController extends Controller
             'cv_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
         ];
 
-        if ($salesRep->user || $request->filled('user_password')) {
+        // A linked client account keeps its own login details; they are managed
+        // from the client's profile, not from the sales rep form.
+        $linkedClient = $salesRep->user?->role === Role::CLIENT;
+
+        if (! $linkedClient && ($salesRep->user || $request->filled('user_password'))) {
             $rules['email'][] = 'required';
             $rules['email'][] = Rule::unique('users', 'email')->ignore($salesRep->user_id);
         }
 
         $data = $request->validate($rules);
 
-        DB::transaction(function () use ($salesRep, $data): void {
+        DB::transaction(function () use ($salesRep, $data, $linkedClient): void {
             $salesRep->update(collect($data)->except([
                 'user_password',
                 'user_password_confirmation',
@@ -276,6 +287,10 @@ class SalesRepresentativeController extends Controller
             ])->all());
 
             $user = $salesRep->user;
+            if ($linkedClient) {
+                return;
+            }
+
             if (! $user && ! empty($data['user_password'])) {
                 $user = User::create([
                     'name' => $data['name'],
@@ -1602,10 +1617,32 @@ class SalesRepresentativeController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Client logins that can be given a sales rep profile (one profile each).
+     *
+     * @return array<int, array{id: int, label: string}>
+     */
+    private function linkableClientAccounts(): array
+    {
+        return User::query()
+            ->where('role', Role::CLIENT)
+            ->whereDoesntHave('salesRepresentative')
+            ->with('customer:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'customer_id'])
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'label' => trim($user->name.' ('.$user->email.')'.($user->customer?->name ? ' - '.$user->customer->name : '')),
+            ])
+            ->values()
+            ->all();
+    }
+
     private function salesRepFormFields(?SalesRepresentative $salesRep): array
     {
         return [
             'employee_id' => (string) old('employee_id', (string) ($salesRep?->employee_id ?? '')),
+            'user_id' => (string) old('user_id', ''),
             'name' => (string) old('name', $salesRep?->name ?? ''),
             'email' => (string) old('email', $salesRep?->user?->email ?? $salesRep?->email ?? ''),
             'phone' => (string) old('phone', $salesRep?->phone ?? ''),

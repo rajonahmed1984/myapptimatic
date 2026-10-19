@@ -17,6 +17,7 @@ export default function Form({
     is_edit = false,
     rep = null,
     employees = [],
+    client_accounts = [],
     form = {},
     routes = {},
 }) {
@@ -32,6 +33,14 @@ export default function Form({
         { value: '', label: 'None' },
         ...employees.map((employee) => ({ value: String(employee.id), label: employee.name })),
     ];
+    const clientAccountOptions = [
+        { value: '', label: 'None - create a separate sales login' },
+        ...client_accounts.map((account) => ({ value: String(account.id), label: account.label })),
+    ];
+    const [clientUserId, setClientUserId] = useState(String(fields?.user_id || ''));
+    // A linked client signs in with their existing client login, so no new
+    // credentials are set here.
+    const usesClientLogin = is_edit ? Boolean(rep?.is_client_account) : clientUserId !== '';
     const statusOptions = [
         { value: 'active', label: 'Active' },
         { value: 'inactive', label: 'Inactive' },
@@ -81,8 +90,29 @@ export default function Form({
                                 <label className="text-xs text-slate-500">User</label>
                                 <div className="mt-1 text-slate-900 font-semibold">{rep?.user_name || '--'}</div>
                                 <div className="text-xs text-slate-500">{rep?.user_email || ''}</div>
+                                {rep?.is_client_account ? (
+                                    <p className="mt-2 text-xs text-teal-700">
+                                        Linked client account: this person signs in with their client login and switches to the sales portal from the menu. Login email and password are managed from the client profile.
+                                    </p>
+                                ) : null}
                             </div>
-                        ) : null}
+                        ) : (
+                            <div>
+                                <label className="text-xs text-slate-500">Existing client account (optional)</label>
+                                <SearchableSelect
+                                    name="user_id"
+                                    value={clientUserId}
+                                    onChange={(value) => setClientUserId(String(value || ''))}
+                                    options={clientAccountOptions}
+                                    className="mt-1"
+                                    placeholder="None - create a separate sales login"
+                                    error={errors?.user_id}
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Pick a client to make them a sales rep too. They keep their client portal and use the same login for both.
+                                </p>
+                            </div>
+                        )}
 
                         {/* Row 1: Employee link | Name | Email */}
                         <div className="grid gap-4 md:grid-cols-3">
@@ -102,7 +132,8 @@ export default function Form({
                                 <input
                                     name="name"
                                     defaultValue={fields?.name || ''}
-                                    required
+                                    required={is_edit || !usesClientLogin}
+                                    placeholder={usesClientLogin && !is_edit ? 'Defaults to the client name' : undefined}
                                     className="ui-input mt-1"
                                 />
                                 {errors?.name ? <p className="mt-1 text-xs text-rose-600">{errors.name}</p> : null}
@@ -113,6 +144,7 @@ export default function Form({
                                     name="email"
                                     type="email"
                                     defaultValue={fields?.email || ''}
+                                    placeholder={usesClientLogin && !is_edit ? 'Defaults to the client email' : undefined}
                                     className="ui-input mt-1"
                                 />
                                 {errors?.email ? <p className="mt-1 text-xs text-rose-600">{errors.email}</p> : null}
@@ -130,6 +162,8 @@ export default function Form({
                                 />
                                 {errors?.phone ? <p className="mt-1 text-xs text-rose-600">{errors.phone}</p> : null}
                             </div>
+                            {!usesClientLogin ? (
+                            <>
                             <div>
                                 <label className="text-xs text-slate-500">{is_edit ? 'New Password' : 'Password'}</label>
                                 <PasswordInput name="user_password" wrapperClassName="mt-1" autoComplete="new-password" />
@@ -142,6 +176,8 @@ export default function Form({
                                 <label className="text-xs text-slate-500">Retype Password</label>
                                 <PasswordInput name="user_password_confirmation" wrapperClassName="mt-1" autoComplete="new-password" />
                             </div>
+                            </>
+                            ) : null}
                         </div>
 
                         {/* Row 3: Project % | Subscriptions % | Status */}

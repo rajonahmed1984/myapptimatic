@@ -217,7 +217,8 @@ class LoginService
         }
 
         if ($portal === 'sales') {
-            if ($user->role !== Role::SALES) {
+            // A client with a sales rep profile keeps the client role.
+            if (! in_array($user->role, [Role::SALES, Role::CLIENT], true)) {
                 return $this->portalAccessMessageForRole($user);
             }
 

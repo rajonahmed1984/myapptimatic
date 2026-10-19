@@ -73,6 +73,8 @@ class CustomerController extends Controller
             ->withCount(['projectMaintenances as active_project_maintenances_count' => function ($query) {
                 $query->where('status', 'active');
             }])
+            // Inactive customers sink to the end of the list (last pages).
+            ->orderByRaw("CASE WHEN status = 'inactive' THEN 1 ELSE 0 END")
             ->latest()
             // Customers created in the same second (imports, seeding) tie on
             // created_at; without a unique tiebreaker MySQL may return the
