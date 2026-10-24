@@ -138,7 +138,11 @@ class ExpenseCategoryController extends Controller
                         'destroy' => route('admin.expenses.categories.destroy', $category),
                     ],
                 ];
-            })->all(),
+            })
+                // Highest-spend categories first; ties keep alphabetical order.
+                ->sortBy([['total_expense', 'desc'], ['name', 'asc']])
+                ->values()
+                ->all(),
         ];
     }
 }

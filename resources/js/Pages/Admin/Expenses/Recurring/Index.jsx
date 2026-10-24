@@ -16,6 +16,10 @@ const statusClass = (status) => {
         return 'border-amber-200 text-amber-700 bg-amber-50';
     }
 
+    if (status === 'stopped') {
+        return 'border-rose-200 text-rose-700 bg-rose-50';
+    }
+
     return 'border-slate-300 text-slate-600 bg-slate-50';
 };
 
@@ -26,13 +30,14 @@ const formatCurrency = (amount, symbol, code) => {
     return `${symbol}${safe.toFixed(2)} ${code}`;
 };
 
+const stopConfirmMessage = (title) => `Stop recurring expense "${title}"? No new bills will be generated. Existing unpaid bills stay payable. This cannot be resumed.`;
+
 export default function Index({
     pageTitle,
     recurringExpenses = { data: [], links: [] },
     paymentMethods = [],
     currency = { symbol: '', code: '' },
     routes = {},
-    stats = { total_advance: 0, total_paid: 0, total_due: 0 },
 }) {
     const { csrf_token: csrfToken } = usePage().props;
     const [openActionId, setOpenActionId] = useState(null);
@@ -97,29 +102,7 @@ export default function Index({
         <>
             <Head title={pageTitle ?? 'Recurring Expenses'} />
 
-            {/* Stats Cards */}
-            <div className="mb-6 grid gap-4 md:grid-cols-3">
-                <div className="card px-4 py-3 border border-emerald-200 bg-emerald-50/40">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Advance</div>
-                    <div className="mt-2 text-xl font-bold text-emerald-600 tabular-nums">
-                        {formatCurrency(stats?.total_advance ?? 0, currency?.symbol, currency?.code)}
-                    </div>
-                </div>
-                <div className="card px-4 py-3 border border-sky-200 bg-sky-50/40">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Paid</div>
-                    <div className="mt-2 text-xl font-bold text-sky-600 tabular-nums">
-                        {formatCurrency(stats?.total_paid ?? 0, currency?.symbol, currency?.code)}
-                    </div>
-                </div>
-                <div className="card px-4 py-3 border border-rose-200 bg-rose-50/40">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Due</div>
-                    <div className="mt-2 text-xl font-bold text-rose-600 tabular-nums">
-                        {formatCurrency(stats?.total_due ?? 0, currency?.symbol, currency?.code)}
-                    </div>
-                </div>
-            </div>
-
-            <div className="card overflow-hidden">
+            <div className="card overflow-hidden xl:overflow-visible">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                     <span className="text-xs font-semibold text-slate-500">
                         Showing {recurringExpenses?.from ?? 1} – {recurringExpenses?.to ?? (recurringExpenses?.data || []).length} of {recurringExpenses?.total ?? (recurringExpenses?.data || []).length} recurring expenses
@@ -144,6 +127,7 @@ export default function Index({
 
                 <DataTable
                     framed={false}
+                    scrollClassName="overflow-x-auto xl:overflow-visible"
                     rows={hasRows ? recurringExpenses.data : []}
                     emptyMessage="No recurring expenses yet."
                         columns={[
@@ -212,22 +196,44 @@ export default function Index({
                                                     <button type="submit" className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50">Delete</button>
                                                 </form>
                                                 <div className="my-1 border-t border-dashed border-slate-300" />
-                                                <button
-                                                    type="button"
-                                                    className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                                                    onClick={() => {
-                                                        setOpenActionId(null);
-                                                        setAdvanceModal({
-                                                            open: true,
-                                                            action: recurring.routes?.advance_store || '',
-                                                            title: recurring.title || 'Recurring Expense',
-                                                            currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
-                                                        });
-                                                    }}
-                                                >
-                                                    Advance
-                                                </button>
+                                                {recurring.status !== 'stopped' ? (
+                                                    <button
+                                                        type="button"
+                                                        className="block w-full px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                                        onClick={() => {
+                                                            setOpenActionId(null);
+                                                            setAdvanceModal({
+                                                                open: true,
+                                                                action: recurring.routes?.advance_store || '',
+                                                                title: recurring.title || 'Recurring Expense',
+                                                                currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
+                                                            });
+                                                        }}
+                                                    >
+                                                        Advance
+                                                    </button>
+                                                ) : null}
                                                 <a href={recurring.routes?.show} data-native="true" className="block px-4 py-2 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Payment</a>
+                                                {recurring.can_resume || recurring.status !== 'stopped' ? (
+                                                    <div className="my-1 border-t border-dashed border-slate-300" />
+                                                ) : null}
+                                                {recurring.can_resume ? (
+                                                    <form method="POST" action={recurring.routes?.resume} data-native="true">
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="block w-full px-4 py-2 text-left text-xs font-semibold text-teal-700 hover:bg-teal-50">Resume</button>
+                                                    </form>
+                                                ) : null}
+                                                {recurring.status !== 'stopped' ? (
+                                                    <form
+                                                        method="POST"
+                                                        action={recurring.routes?.stop}
+                                                        data-native="true"
+                                                        onSubmit={(event) => { if (!window.confirm(stopConfirmMessage(recurring.title))) event.preventDefault(); }}
+                                                    >
+                                                        <input type="hidden" name="_token" value={csrfToken} />
+                                                        <button type="submit" className="block w-full px-4 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50">Stop</button>
+                                                    </form>
+                                                ) : null}
                                             </div>
                                         ) : null}
                                     </div>
@@ -257,7 +263,7 @@ export default function Index({
                                             title={recurring.title}
                                             actions={[
                                                 { label: 'Edit', href: recurring.routes?.edit },
-                                                {
+                                                ...(recurring.status !== 'stopped' ? [{
                                                     label: 'Record Advance',
                                                     onClick: () => setAdvanceModal({
                                                         open: true,
@@ -265,8 +271,18 @@ export default function Index({
                                                         title: recurring.title || 'Recurring Expense',
                                                         currentAdvance: Number(recurring.advance_amount ?? 0).toFixed(2),
                                                     }),
-                                                },
+                                                }] : []),
                                                 { label: 'Payment', href: recurring.routes?.show },
+                                                ...(recurring.can_resume ? [{
+                                                    label: 'Resume',
+                                                    form: { action: recurring.routes?.resume, method: 'POST', token: csrfToken },
+                                                }] : []),
+                                                ...(recurring.status !== 'stopped' ? [{
+                                                    label: 'Stop',
+                                                    tone: 'danger',
+                                                    confirm: stopConfirmMessage(recurring.title),
+                                                    form: { action: recurring.routes?.stop, method: 'POST', token: csrfToken },
+                                                }] : []),
                                                 {
                                                     label: 'Delete',
                                                     tone: 'danger',

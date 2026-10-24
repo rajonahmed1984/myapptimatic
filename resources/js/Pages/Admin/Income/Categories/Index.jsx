@@ -124,6 +124,7 @@ export default function Index({
                         emptyMessage="No categories yet."
                         columns={[
                             { key: 'name', header: 'Name', cellClassName: 'font-semibold text-slate-900', render: (category) => category.name },
+                            { key: 'total', header: 'Total income', cellClassName: 'text-slate-700', render: (category) => category.total_income_display || '0.00' },
                             {
                                 key: 'status',
                                 header: 'Status',
@@ -160,6 +161,7 @@ export default function Index({
                                 subtitle={category.description}
                                 badge={category.status_label}
                                 badgeColor={statusClass(category.status)}
+                                metrics={[{ label: 'Total Income', value: category.total_income_display || '0.00' }]}
                                 actions={
                                     <>
                                         <a

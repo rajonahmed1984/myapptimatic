@@ -100,7 +100,7 @@ class EmployeePaymentNotificationService
                 'company_name' => (string) $companyName,
                 'company_logo' => $this->companyLogoSource(),
                 'company_address' => (string) (Setting::getValue('pay_to_text') ?: '--'),
-                'company_email' => (string) (Setting::getValue('company_email') ?: '--'),
+                'company_email' => (string) (config('system_mail.billing.address') ?: Setting::getValue('company_email') ?: '--'),
                 'generated_at' => now()->format(config('app.datetime_format', 'd-m-Y h:i A')),
             ]);
 
@@ -192,7 +192,7 @@ class EmployeePaymentNotificationService
                 'company_name' => (string) $companyName,
                 'company_logo' => $this->companyLogoSource(),
                 'company_address' => (string) (Setting::getValue('pay_to_text') ?: '--'),
-                'company_email' => (string) (Setting::getValue('company_email') ?: '--'),
+                'company_email' => (string) (config('system_mail.billing.address') ?: Setting::getValue('company_email') ?: '--'),
                 'generated_at' => now()->format(config('app.datetime_format', 'd-m-Y h:i A')),
             ]);
 

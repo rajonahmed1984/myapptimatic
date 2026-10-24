@@ -118,10 +118,30 @@ function xTickIndexes(total, maxTicks = 9) {
     return ticks;
 }
 
+const changeBadgeClass = (direction) => {
+    if (direction === 'up') return 'bg-emerald-50 text-emerald-700';
+    if (direction === 'down') return 'bg-rose-50 text-rose-700';
+    return 'bg-slate-100 text-slate-600';
+};
+
+const formatRate = (value) => {
+    const number = safeNum(value);
+    return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+};
+
+const inputClass = 'mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-teal-600';
+
+function FieldLabel({ htmlFor, children, hint }) {
+    return (
+        <div>
+            <label htmlFor={htmlFor} className="text-xs font-semibold text-slate-700">{children}</label>
+            {hint ? <div className="text-xs text-slate-500">{hint}</div> : null}
+        </div>
+    );
+}
+
 export default function Index({
     pageTitle = 'VAT Settings',
-    heading = 'VAT settings',
-    subheading = 'Configure VAT mode, default rates, and invoice notes.',
     routes = {},
     settings_form = {},
     rate_form = {},
@@ -138,19 +158,27 @@ export default function Index({
     const trendLabels = vat_analytics?.trend?.labels || [];
     const trendSeries = asNumberList(vat_analytics?.trend?.series || []);
     const [hoveredIndex, setHoveredIndex] = React.useState(null);
+    const [mode, setMode] = React.useState(String(settings_form?.tax_mode_default || 'exclusive'));
+    const [noteTemplate, setNoteTemplate] = React.useState(settings_form?.invoice_tax_note_template || '');
     const effectiveYearFormRef = React.useRef(null);
     const effectiveYearOptions = React.useMemo(() => (vat_analytics?.effective_year_options || []).map((year) => ({
         value: String(year.value),
         label: year.label,
     })), [vat_analytics?.effective_year_options]);
-    const taxModeOptions = [
-        { value: 'exclusive', label: 'Exclusive (add VAT on top)' },
-        { value: 'inclusive', label: 'Inclusive (included in total)' },
-    ];
     const defaultTaxRateOptions = React.useMemo(() => [
-        { value: '', label: 'No default' },
+        { value: '', label: 'Automatic (newest active rate)' },
         ...rate_options.map((rate) => ({ value: String(rate.id), label: rate.label })),
     ], [rate_options]);
+
+    const isEnabled = Boolean(quick_reference?.enabled);
+    const currentRate = quick_reference?.current_rate_percent;
+    const hasCurrentRate = currentRate !== null && currentRate !== undefined;
+    // Worked examples use today's rate, or the standard 15% when none is set.
+    const exampleRate = hasCurrentRate ? safeNum(currentRate) : 15;
+    const examplePrice = 1000;
+    const exclusiveVat = examplePrice * (exampleRate / 100);
+    const inclusiveVat = examplePrice * (exampleRate / (100 + exampleRate));
+    const notePreview = noteTemplate.trim() === '' ? '' : noteTemplate.split('{rate}').join(formatRate(exampleRate));
 
     const chartModel = React.useMemo(() => {
         const labels = Array.isArray(trendLabels) ? trendLabels : [];
@@ -215,72 +243,98 @@ export default function Index({
         };
     }, [hoveredIndex, chartModel]);
 
-    const hasChartData = chartModel.seriesLength > 0;
+    const hasChartData = chartModel.totalSeries.some((value) => value > 0);
 
     return (
         <>
             <Head title={pageTitle} />
 
+            {/* Current status: what happens to a new invoice right now */}
             <div className="card p-6">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="text-lg font-semibold text-slate-900">VAT</div>
+                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${isEnabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-50 text-slate-600'}`}>
+                                {isEnabled ? 'On' : 'Off'}
+                            </span>
+                        </div>
+                        <div className="mt-1 text-sm text-slate-600">
+                            {!isEnabled ? (
+                                'New invoices are created without VAT. Turn it on under "VAT settings" below.'
+                            ) : hasCurrentRate ? (
+                                <>
+                                    New invoices get <span className="font-semibold text-slate-900">{formatRate(currentRate)}% VAT</span>,{' '}
+                                    {quick_reference?.mode_key === 'inclusive' ? 'already included in the price.' : 'added on top of the price.'}
+                                </>
+                            ) : (
+                                <span className="text-amber-700">VAT is on, but no active rate covers today, so new invoices get no VAT. Add a rate below.</span>
+                            )}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">Bangladesh fiscal year: 1 July – 30 June.</div>
+                    </div>
+                    {routes?.reports ? (
+                        <a
+                            href={routes.reports}
+                            data-native="true"
+                            className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
+                        >
+                            View Reports
+                        </a>
+                    ) : null}
+                </div>
+            </div>
+
+            {/* VAT collected */}
+            <div className="card mt-6 p-6">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <div className="text-sm font-semibold text-slate-800">Effective Year VAT</div>
-                        <div className="text-xs text-slate-500">Month-to-month and year-to-year VAT performance.</div>
+                        <div className="text-sm font-semibold text-slate-800">VAT on invoices</div>
+                        <div className="text-xs text-slate-500">
+                            Counted by invoice issue date. Cancelled invoices are left out.
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="flex items-center gap-2">
-                            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Effective year</label>
-                            <SearchableSelect
-                                name="effective_year"
-                                defaultValue={String(vat_analytics?.effective_year || '')}
-                                onChange={() => effectiveYearFormRef.current?.submit()}
-                                options={effectiveYearOptions}
-                                placeholder="Select year"
-                            />
-                        </form>
-                        {routes?.reports && (
-                            <a
-                                href={routes.reports}
-                                data-native="true"
-                                className="border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600"
-                            >
-                                View Reports
-                            </a>
-                        )}
-                    </div>
+                    <form ref={effectiveYearFormRef} method="GET" action={routes?.index} data-native="true" className="w-full sm:w-auto sm:min-w-[300px]">
+                        <label className="text-xs font-semibold text-slate-700">Fiscal year (July – June)</label>
+                        <SearchableSelect
+                            name="effective_year"
+                            defaultValue={String(vat_analytics?.effective_year || '')}
+                            onChange={() => effectiveYearFormRef.current?.submit()}
+                            options={effectiveYearOptions}
+                            className="mt-1"
+                            placeholder="Select fiscal year"
+                        />
+                    </form>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This month VAT</div>
-                        <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_month_total)}</div>
+                        <div className="text-xs font-semibold text-slate-500">This month</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_month_total)}</div>
+                        <div className="mt-1 text-xs text-slate-500">{vat_analytics?.current_month_label || '--'}</div>
+                    </div>
+                    <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4">
+                        <div className="text-xs font-semibold text-slate-500">{vat_analytics?.fiscal_year_label || 'Fiscal year'}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_year_total)}</div>
+                        <div className="mt-1 text-xs text-slate-500">{vat_analytics?.fiscal_year_range || '--'}</div>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">This year VAT</div>
-                        <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.this_year_total)}</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">All time VAT</div>
-                        <div className="mt-2 text-xl font-semibold text-slate-900">{money(currency_code, summary.all_time_total)}</div>
+                        <div className="text-xs font-semibold text-slate-500">All time</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">{money(currency_code, summary.all_time_total)}</div>
+                        <div className="mt-1 text-xs text-slate-500">Every fiscal year</div>
                     </div>
                 </div>
 
                 <div className="mt-5 rounded-2xl border border-slate-200 bg-white/90 p-4">
-                    <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        VAT Trend ({vat_analytics?.period_label || '--'})
+                    <div className="mb-3 text-xs font-semibold text-slate-600">
+                        Monthly VAT, {vat_analytics?.fiscal_year_label || '--'} ({vat_analytics?.fiscal_year_range || '--'})
                     </div>
                     {!hasChartData ? (
                         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                            No VAT trend data available for this effective year.
+                            No VAT was charged in this fiscal year.
                         </div>
                     ) : (
                         <div className="relative w-full overflow-x-auto">
-                            <div className="mb-2 flex flex-wrap gap-2">
-                                <div className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                    <span className={`h-2 w-2 rounded-full ${TAX_CHART_SERIES.total.legend}`} />
-                                    {TAX_CHART_SERIES.total.label}
-                                </div>
-                            </div>
                             <svg viewBox={`0 0 ${TAX_CHART_FRAME.width} ${TAX_CHART_FRAME.height}`} className="h-auto min-w-[700px] w-full">
                                 <defs>
                                     <linearGradient id="taxTrendFillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -308,10 +362,6 @@ export default function Index({
                                         </g>
                                     );
                                 })}
-
-                                <text x={TAX_CHART_FRAME.padLeft - 42} y={TAX_CHART_FRAME.padTop - 4} textAnchor="start" fontSize="12" fill="#334155">
-                                    VAT
-                                </text>
 
                                 {hoverDetails ? (
                                     <line
@@ -343,6 +393,7 @@ export default function Index({
                                         fill="transparent"
                                         onMouseEnter={() => setHoveredIndex(region.index)}
                                         onMouseMove={() => setHoveredIndex(region.index)}
+                                        onMouseLeave={() => setHoveredIndex(null)}
                                         onClick={() => setHoveredIndex(region.index)}
                                     />
                                 ))}
@@ -353,17 +404,16 @@ export default function Index({
                                         return null;
                                     }
                                     return (
-                                    <text
-                                        key={`tax-label-${index}`}
-                                        x={point.x}
-                                        y={TAX_CHART_FRAME.height - 10}
-                                        textAnchor="end"
-                                        transform={`rotate(-35 ${point.x} ${TAX_CHART_FRAME.height - 10})`}
-                                        fontSize="11"
-                                        fill="#64748b"
-                                    >
-                                        {chartModel.labels[index] || '--'}
-                                    </text>
+                                        <text
+                                            key={`tax-label-${index}`}
+                                            x={point.x}
+                                            y={TAX_CHART_FRAME.height - 12}
+                                            textAnchor="middle"
+                                            fontSize="12"
+                                            fill="#64748b"
+                                        >
+                                            {chartModel.labels[index] || '--'}
+                                        </text>
                                     );
                                 })}
                             </svg>
@@ -383,36 +433,28 @@ export default function Index({
 
                 <div className="mt-5 grid gap-5 xl:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Month to month VAT</div>
+                        <div className="text-xs font-semibold text-slate-600">Month by month ({vat_analytics?.fiscal_year_label || '--'})</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
                                 <thead>
-                                    <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                        <th className="whitespace-nowrap px-2 py-2 text-left">Month</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">VAT</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">Invoices</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">M/M</th>
+                                    <tr className="text-xs text-slate-500">
+                                        <th className="whitespace-nowrap px-2 py-2 text-left font-semibold">Month</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">VAT</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Invoices</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">vs previous month</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {monthRows.length ? (
                                         monthRows.map((row) => (
-                                            <tr key={row.month_number} className="border-t border-slate-100">
+                                            <tr key={row.month_key} className="border-t border-slate-100">
                                                 <td className="whitespace-nowrap px-2 py-2">{row.month_label}</td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right font-semibold text-slate-900">
-                                                    {money(currency_code, row.tax_total)}
+                                                    {money(currency_code, row.vat_total)}
                                                 </td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right">{row.invoice_count}</td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right">
-                                                    <span
-                                                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                            row.change_direction === 'up'
-                                                                ? 'bg-emerald-50 text-emerald-700'
-                                                                : row.change_direction === 'down'
-                                                                  ? 'bg-rose-50 text-rose-700'
-                                                                  : 'bg-slate-100 text-slate-600'
-                                                        }`}
-                                                    >
+                                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${changeBadgeClass(row.change_direction)}`}>
                                                         {percentage(row.change_percent)}
                                                     </span>
                                                 </td>
@@ -421,7 +463,7 @@ export default function Index({
                                     ) : (
                                         <tr>
                                             <td colSpan={4} className="px-2 py-4 text-center text-slate-500">
-                                                No month-wise VAT data found.
+                                                No VAT in this fiscal year.
                                             </td>
                                         </tr>
                                     )}
@@ -431,36 +473,31 @@ export default function Index({
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white/85 p-4">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Year to year VAT</div>
+                        <div className="text-xs font-semibold text-slate-600">Fiscal year by fiscal year</div>
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-sm text-slate-700">
                                 <thead>
-                                    <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                        <th className="whitespace-nowrap px-2 py-2 text-left">Year</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">VAT</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">Invoices</th>
-                                        <th className="whitespace-nowrap px-2 py-2 text-right">Y/Y</th>
+                                    <tr className="text-xs text-slate-500">
+                                        <th className="whitespace-nowrap px-2 py-2 text-left font-semibold">Fiscal year</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">VAT</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Invoices</th>
+                                        <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">vs previous year</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {yearRows.length ? (
                                         yearRows.map((row) => (
                                             <tr key={row.year} className="border-t border-slate-100">
-                                                <td className="whitespace-nowrap px-2 py-2">{row.year}</td>
+                                                <td className="whitespace-nowrap px-2 py-2">
+                                                    <div>{row.label}</div>
+                                                    <div className="text-xs text-slate-500">{row.range}</div>
+                                                </td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right font-semibold text-slate-900">
-                                                    {money(currency_code, row.tax_total)}
+                                                    {money(currency_code, row.vat_total)}
                                                 </td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right">{row.invoice_count}</td>
                                                 <td className="whitespace-nowrap px-2 py-2 text-right">
-                                                    <span
-                                                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                            row.change_direction === 'up'
-                                                                ? 'bg-emerald-50 text-emerald-700'
-                                                                : row.change_direction === 'down'
-                                                                  ? 'bg-rose-50 text-rose-700'
-                                                                  : 'bg-slate-100 text-slate-600'
-                                                        }`}
-                                                    >
+                                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${changeBadgeClass(row.change_direction)}`}>
                                                         {percentage(row.change_percent)}
                                                     </span>
                                                 </td>
@@ -469,7 +506,7 @@ export default function Index({
                                     ) : (
                                         <tr>
                                             <td colSpan={4} className="px-2 py-4 text-center text-slate-500">
-                                                No year-wise VAT data found.
+                                                No VAT charged yet.
                                             </td>
                                         </tr>
                                     )}
@@ -480,171 +517,158 @@ export default function Index({
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_3fr]">
+            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                {/* Settings */}
                 <div className="card p-6">
-                    <div className="section-label">Settings</div>
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 p-4">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Quick reference</div>
-                        <div className="mt-2 space-y-2 text-sm text-slate-600">
-                            <div>
-                                Default mode: <span className="font-semibold text-slate-900">{quick_reference?.mode || '--'}</span>
-                            </div>
-                            <div>
-                                Default rate: <span className="font-semibold text-slate-900">{quick_reference?.default_rate_name || 'None'}</span>
-                            </div>
-                            <div>
-                                Invoices label: <span className="font-semibold text-slate-900">VAT</span>
-                            </div>
-                        </div>
-                    </div>
-                    <form method="POST" action={routes?.settings_update} className="mt-4 grid gap-4 text-sm" data-native="true">
+                    <div className="section-label">VAT settings</div>
+                    <div className="mt-1 text-xs text-slate-500">Applies to new invoices. Invoices already issued keep their VAT.</div>
+
+                    <form method="POST" action={routes?.settings_update} className="mt-4 grid gap-5 text-sm" data-native="true">
                         <input type="hidden" name="_token" value={csrfToken} />
                         <input type="hidden" name="_method" value="PUT" />
-                        <div className="flex items-center gap-2">
+
+                        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4">
                             <input type="hidden" name="enabled" value="0" />
                             <input
                                 type="checkbox"
                                 name="enabled"
                                 value="1"
-                                className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600"
                                 defaultChecked={Boolean(settings_form?.enabled)}
                             />
-                            <span className="text-xs text-slate-600">Enable VAT system</span>
+                            <span>
+                                <span className="block text-sm font-semibold text-slate-900">Charge VAT on new invoices</span>
+                                <span className="block text-xs text-slate-500">When off, invoices are created without VAT.</span>
+                            </span>
+                        </label>
+
+                        <div>
+                            <FieldLabel>How VAT is applied</FieldLabel>
+                            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                                {[
+                                    {
+                                        value: 'exclusive',
+                                        title: 'Added on top of the price',
+                                        lines: [
+                                            `Price ${money(currency_code, examplePrice)}`,
+                                            `+ VAT ${formatRate(exampleRate)}% ${money(currency_code, exclusiveVat)}`,
+                                            `Customer pays ${money(currency_code, examplePrice + exclusiveVat)}`,
+                                        ],
+                                    },
+                                    {
+                                        value: 'inclusive',
+                                        title: 'Already included in the price',
+                                        lines: [
+                                            `Customer pays ${money(currency_code, examplePrice)}`,
+                                            `of which VAT ${formatRate(exampleRate)}% ${money(currency_code, inclusiveVat)}`,
+                                            `Net price ${money(currency_code, examplePrice - inclusiveVat)}`,
+                                        ],
+                                    },
+                                ].map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className={`cursor-pointer rounded-2xl border p-3 transition ${mode === option.value ? 'border-teal-400 bg-teal-50/60 ring-1 ring-teal-400' : 'border-slate-200 bg-white/80 hover:border-slate-300'}`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                name="tax_mode_default"
+                                                value={option.value}
+                                                checked={mode === option.value}
+                                                onChange={() => setMode(option.value)}
+                                                className="h-4 w-4 text-teal-600"
+                                            />
+                                            <span className="text-sm font-semibold text-slate-900">{option.title}</span>
+                                        </span>
+                                        <span className="mt-2 block space-y-0.5 text-xs text-slate-600 tabular-nums">
+                                            {option.lines.map((line) => <span key={line} className="block">{line}</span>)}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                            {errors.tax_mode_default ? <div className="mt-1 text-xs text-rose-600">{errors.tax_mode_default}</div> : null}
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Default VAT mode</label>
-                            <SearchableSelect
-                                name="tax_mode_default"
-                                defaultValue={String(settings_form?.tax_mode_default || 'exclusive')}
-                                options={taxModeOptions}
-                                className="mt-1"
-                                placeholder="Select VAT mode"
-                                error={errors.tax_mode_default}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-slate-500">Default VAT rate</label>
+                            <FieldLabel hint="Automatic picks the newest active rate for each invoice's issue date.">Rate to use</FieldLabel>
                             <SearchableSelect
                                 name="default_tax_rate_id"
                                 defaultValue={String(settings_form?.default_tax_rate_id || '')}
                                 options={defaultTaxRateOptions}
                                 className="mt-1"
-                                placeholder="No default"
+                                placeholder="Automatic (newest active rate)"
                                 error={errors.default_tax_rate_id}
                             />
                         </div>
 
                         <div>
-                            <label className="text-xs text-slate-500">Invoice VAT label</label>
-                            <div className="mt-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                                VAT
-                            </div>
-                            <div className="mt-1 text-xs text-slate-500">This label is fixed system-wide.</div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-slate-500">Invoice VAT note template</label>
-                            <textarea
+                            <FieldLabel htmlFor="vatNoteTemplate" hint={'Printed on invoices next to the VAT amount. {rate} becomes the percentage.'}>
+                                Invoice VAT line
+                            </FieldLabel>
+                            <input
+                                id="vatNoteTemplate"
                                 name="invoice_tax_note_template"
-                                rows={1}
-                                defaultValue={settings_form?.invoice_tax_note_template || ''}
-                                className="mt-1 w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
+                                value={noteTemplate}
+                                onChange={(event) => setNoteTemplate(event.target.value)}
+                                placeholder="VAT ({rate}%)"
+                                className={inputClass}
                             />
-                            <div className="mt-1 text-xs text-slate-500">Use {'{rate}'} to display the applied percentage.</div>
+                            {notePreview ? (
+                                <div className="mt-1 text-xs text-slate-500">
+                                    Shows as: <span className="font-semibold text-slate-800">{notePreview}</span>
+                                </div>
+                            ) : null}
                             {errors.invoice_tax_note_template ? <div className="mt-1 text-xs text-rose-600">{errors.invoice_tax_note_template}</div> : null}
                         </div>
 
                         <div className="flex justify-end">
                             <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                                Save Settings
+                                Save settings
                             </button>
                         </div>
                     </form>
                 </div>
 
+                {/* Rates */}
                 <div className="card p-6">
                     <div className="section-label">VAT rates</div>
-                    <form method="POST" action={routes?.rate_store} className="mt-4 grid gap-3 text-sm" data-native="true">
-                        <input type="hidden" name="_token" value={csrfToken} />
-                        <input
-                            name="name"
-                            defaultValue={rate_form?.name || ''}
-                            placeholder="Rate name"
-                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                        {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            name="rate_percent"
-                            defaultValue={rate_form?.rate_percent || ''}
-                            placeholder="Rate %"
-                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                        {errors.rate_percent ? <div className="mt-1 text-xs text-rose-600">{errors.rate_percent}</div> : null}
-                        <input
-                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
-                            name="effective_from"
-                            defaultValue={rate_form?.effective_from || ''}
-                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                        {errors.effective_from ? <div className="mt-1 text-xs text-rose-600">{errors.effective_from}</div> : null}
-                        <input
-                            type="text" placeholder="DD-MM-YYYY" inputMode="numeric"
-                            name="effective_to"
-                            defaultValue={rate_form?.effective_to || ''}
-                            className="w-full rounded-full border border-slate-300 bg-white px-4 py-1.5 h-8 text-xs focus:outline-none focus:ring-1 focus:ring-teal-600"
-                        />
-                        {errors.effective_to ? <div className="mt-1 text-xs text-rose-600">{errors.effective_to}</div> : null}
-                        <div className="flex items-center gap-2">
-                            <input type="hidden" name="is_active" value="0" />
-                            <input
-                                type="checkbox"
-                                name="is_active"
-                                value="1"
-                                className="h-4 w-4 rounded border-slate-300 text-emerald-600"
-                                defaultChecked={Boolean(rate_form?.is_active)}
-                            />
-                            <span className="text-xs text-slate-600">Active</span>
-                        </div>
-                        <div>
-                            <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                                Add Rate
-                            </button>
-                        </div>
-                    </form>
+                    <div className="mt-1 text-xs text-slate-500">
+                        Each invoice uses the rate active on its issue date. When the rate changes by law, add a new rate with its start date
+                        and set an end date on the old one, so past invoices stay correct.
+                    </div>
 
-                    <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-300 bg-white/80">
+                    <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80">
                         <table className="min-w-full text-sm text-slate-700">
                             <thead>
-                                <tr className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                                    <th className="py-2 px-3">Name</th>
-                                    <th className="py-2 px-3">Rate</th>
-                                    <th className="py-2 px-3">Effective</th>
-                                    <th className="py-2 px-3">Status</th>
-                                    <th className="py-2 px-3 text-right">Actions</th>
+                                <tr className="text-xs text-slate-500">
+                                    <th className="px-3 py-2 text-left font-semibold">Name</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Rate</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Valid</th>
+                                    <th className="px-3 py-2 text-left font-semibold">Status</th>
+                                    <th className="px-3 py-2 text-right font-semibold">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rates.length > 0 ? (
                                     rates.map((rate) => (
-                                        <tr key={rate.id} className="border-b border-slate-100">
-                                            <td className="py-2 px-3 font-semibold text-slate-900">{rate.name}</td>
-                                            <td className="py-2 px-3">{rate.rate_percent_display}</td>
-                                            <td className="py-2 px-3">
-                                                <div>{rate.effective_from_display}</div>
-                                                <div className="text-xs text-slate-500">to {rate.effective_to_display}</div>
+                                        <tr key={rate.id} className="border-t border-slate-100">
+                                            <td className="px-3 py-2 font-semibold text-slate-900">
+                                                {rate.name}
+                                                {String(rate.id) === String(quick_reference?.current_rate_id ?? '') ? (
+                                                    <span className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700">In use today</span>
+                                                ) : null}
                                             </td>
-                                            <td className="py-2 px-3">
+                                            <td className="px-3 py-2">{rate.rate_percent_display}</td>
+                                            <td className="whitespace-nowrap px-3 py-2">
+                                                <div>From {rate.effective_from_display}</div>
+                                                <div className="text-xs text-slate-500">To {rate.effective_to_display}</div>
+                                            </td>
+                                            <td className="px-3 py-2">
                                                 <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusClass(rate.is_active)}`}>
                                                     {rate.status_label}
                                                 </span>
                                             </td>
-                                            <td className="py-2 px-3 text-right">
+                                            <td className="px-3 py-2 text-right">
                                                 <div className="flex justify-end gap-3 text-xs font-semibold">
                                                     <a href={rate?.routes?.edit} data-native="true" className="text-teal-600 hover:text-teal-500">
                                                         Edit
@@ -670,14 +694,83 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="py-4 px-3 text-center text-slate-500">
-                                            No VAT rates yet.
+                                        <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                                            No VAT rates yet. Add one below.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
+
+                    <form method="POST" action={routes?.rate_store} className="mt-5 rounded-2xl border border-dashed border-slate-300 p-4 text-sm" data-native="true">
+                        <input type="hidden" name="_token" value={csrfToken} />
+                        <div className="text-sm font-semibold text-slate-900">Add a rate</div>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <FieldLabel htmlFor="vatRateName">Name</FieldLabel>
+                                <input id="vatRateName" name="name" defaultValue={rate_form?.name || ''} placeholder="Standard VAT" className={inputClass} />
+                                {errors.name ? <div className="mt-1 text-xs text-rose-600">{errors.name}</div> : null}
+                            </div>
+                            <div>
+                                <FieldLabel htmlFor="vatRatePercent">Rate (%)</FieldLabel>
+                                <input
+                                    id="vatRatePercent"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    name="rate_percent"
+                                    defaultValue={rate_form?.rate_percent || ''}
+                                    placeholder="15"
+                                    className={inputClass}
+                                />
+                                {errors.rate_percent ? <div className="mt-1 text-xs text-rose-600">{errors.rate_percent}</div> : null}
+                            </div>
+                            <div>
+                                <FieldLabel htmlFor="vatRateFrom">Starts on</FieldLabel>
+                                <input
+                                    id="vatRateFrom"
+                                    type="text"
+                                    placeholder="DD-MM-YYYY"
+                                    inputMode="numeric"
+                                    name="effective_from"
+                                    defaultValue={rate_form?.effective_from || ''}
+                                    className={inputClass}
+                                />
+                                {errors.effective_from ? <div className="mt-1 text-xs text-rose-600">{errors.effective_from}</div> : null}
+                            </div>
+                            <div>
+                                <FieldLabel htmlFor="vatRateTo">Ends on <span className="font-normal text-slate-500">(optional)</span></FieldLabel>
+                                <input
+                                    id="vatRateTo"
+                                    type="text"
+                                    placeholder="Leave blank for no end date"
+                                    inputMode="numeric"
+                                    name="effective_to"
+                                    defaultValue={rate_form?.effective_to || ''}
+                                    className={inputClass}
+                                />
+                                {errors.effective_to ? <div className="mt-1 text-xs text-rose-600">{errors.effective_to}</div> : null}
+                            </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                            <label className="flex items-center gap-2 text-xs text-slate-600">
+                                <input type="hidden" name="is_active" value="0" />
+                                <input
+                                    type="checkbox"
+                                    name="is_active"
+                                    value="1"
+                                    className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                                    defaultChecked={Boolean(rate_form?.is_active)}
+                                />
+                                Active
+                            </label>
+                            <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                                Add rate
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </>

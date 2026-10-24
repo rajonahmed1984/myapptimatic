@@ -26,6 +26,22 @@ const statusClass = (status) => {
     return 'border-amber-200 text-amber-700 bg-amber-50';
 };
 
+const recurringStatusClass = (status) => {
+    if (status === 'active') {
+        return 'border-emerald-200 text-emerald-700 bg-emerald-50';
+    }
+
+    if (status === 'paused') {
+        return 'border-amber-200 text-amber-700 bg-amber-50';
+    }
+
+    if (status === 'stopped') {
+        return 'border-rose-200 text-rose-700 bg-rose-50';
+    }
+
+    return 'border-slate-300 text-slate-600 bg-slate-50';
+};
+
 const Pagination = ({ links }) => (
     <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         {(links ?? []).map((link, idx) =>
@@ -169,7 +185,14 @@ export default function Show({
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <div className="section-label">Recurring Expense</div>
-                    <div className="text-2xl font-semibold text-slate-900">{recurringExpense.title}</div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-2xl font-semibold text-slate-900">{recurringExpense.title}</div>
+                        {recurringExpense.status ? (
+                            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${recurringStatusClass(recurringExpense.status)}`}>
+                                {String(recurringExpense.status).charAt(0).toUpperCase() + String(recurringExpense.status).slice(1)}
+                            </span>
+                        ) : null}
+                    </div>
                     <div className="mt-1 text-sm text-slate-500">
                         {recurringExpense.category_name} | {formatCurrency(recurringExpense.amount, currency.symbol, currency.code)} | Every{' '}
                         {recurringExpense.recurrence_interval}{' '}
@@ -177,6 +200,37 @@ export default function Show({
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                    {recurringExpense.can_resume ? (
+                        <form method="POST" action={routes.resume} data-native="true">
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <button
+                                type="submit"
+                                className="rounded-full border border-teal-200 px-4 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50"
+                            >
+                                Resume
+                            </button>
+                        </form>
+                    ) : null}
+                    {recurringExpense.status && recurringExpense.status !== 'stopped' ? (
+                        <form
+                            method="POST"
+                            action={routes.stop}
+                            data-native="true"
+                            onSubmit={(event) => {
+                                if (!window.confirm(`Stop recurring expense "${recurringExpense.title}"? No new bills will be generated. Existing unpaid bills stay payable. This cannot be resumed.`)) {
+                                    event.preventDefault();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <button
+                                type="submit"
+                                className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                            >
+                                Stop
+                            </button>
+                        </form>
+                    ) : null}
                     <a
                         href={routes.edit}
                         data-native="true"

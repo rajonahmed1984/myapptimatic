@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Income;
 use App\Models\IncomeCategory;
+use App\Models\Setting;
+use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -72,6 +74,18 @@ class IncomeCategoryController extends Controller
 
     private function indexInertiaProps(Request $request, Collection $categories): array
     {
+        $currencyCode = strtoupper((string) Setting::getValue('currency', Currency::DEFAULT));
+        if (! Currency::isAllowed($currencyCode)) {
+            $currencyCode = Currency::DEFAULT;
+        }
+
+        // Only manual income entries carry a category; invoice payments do not.
+        $incomeTotalsByCategory = Income::query()
+            ->selectRaw('income_category_id, SUM(amount) as total_amount')
+            ->whereNotNull('income_category_id')
+            ->groupBy('income_category_id')
+            ->pluck('total_amount', 'income_category_id');
+
         $editId = $request->old('edit_id', $request->query('edit'));
         $editCategoryId = is_numeric($editId) ? (int) $editId : null;
         $editCategory = $editCategoryId
@@ -104,19 +118,27 @@ class IncomeCategoryController extends Controller
                     'description' => (string) old('description', (string) ($editCategory?->description ?? '')),
                 ],
             ],
-            'categories' => $categories->values()->map(function (IncomeCategory $category) {
+            'categories' => $categories->values()->map(function (IncomeCategory $category) use ($incomeTotalsByCategory, $currencyCode) {
+                $totalIncome = (float) ($incomeTotalsByCategory->get($category->id) ?? 0);
+
                 return [
                     'id' => $category->id,
                     'name' => (string) $category->name,
                     'status' => (string) $category->status,
                     'status_label' => ucfirst((string) $category->status),
                     'description' => (string) ($category->description ?? '--'),
+                    'total_income' => $totalIncome,
+                    'total_income_display' => sprintf('%s %s', $currencyCode, number_format($totalIncome, 2)),
                     'routes' => [
                         'edit' => route('admin.income.categories.index', ['edit' => $category->id]),
                         'destroy' => route('admin.income.categories.destroy', $category),
                     ],
                 ];
-            })->all(),
+            })
+                // Highest-earning categories first; ties keep alphabetical order.
+                ->sortBy([['total_income', 'desc'], ['name', 'asc']])
+                ->values()
+                ->all(),
         ];
     }
 }

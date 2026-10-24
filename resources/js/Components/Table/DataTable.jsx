@@ -22,6 +22,10 @@ export default function DataTable({
     // false when the caller already wraps the list in its own card (e.g. with
     // a toolbar and pagination), so the table does not draw a second one.
     framed = true,
+    // Wrapper around the <table>. overflow-x-auto also forces a vertical
+    // scrollbar when row dropdowns overflow, so pages with action menus can
+    // relax it (e.g. 'overflow-x-auto xl:overflow-visible').
+    scrollClassName = 'overflow-x-auto',
 }) {
     return (
         <>
@@ -59,7 +63,7 @@ export default function DataTable({
                         header
                     )
                 ) : null}
-                <div className="overflow-x-auto">
+                <div className={scrollClassName}>
                     <table className="min-w-full text-left text-sm">
                         <thead className="border-b border-slate-200 text-xs uppercase tracking-[0.25em] text-slate-500">
                             <tr>

@@ -573,10 +573,14 @@ class RecurringExpenseController extends Controller
             'routes' => [
                 'edit' => route('admin.expenses.recurring.edit', $recurringExpense),
                 'back' => route('admin.expenses.recurring.index'),
+                'resume' => route('admin.expenses.recurring.resume', $recurringExpense),
+                'stop' => route('admin.expenses.recurring.stop', $recurringExpense),
             ],
             'recurringExpense' => [
                 'id' => $recurringExpense->id,
                 'title' => $recurringExpense->title,
+                'status' => $recurringExpense->status,
+                'can_resume' => $recurringExpense->status === 'paused',
                 'category_name' => $recurringExpense->category?->name ?? 'No category',
                 'amount' => (float) $recurringExpense->amount,
                 'recurrence_type' => $recurringExpense->recurrence_type,
@@ -699,6 +703,11 @@ class RecurringExpenseController extends Controller
             } catch (\Throwable $e) {
                 return (string) $recurringExpense->next_due_date;
             }
+        }
+
+        // A stopped template never generates again, so its next run date is meaningless.
+        if ($recurringExpense->status === 'stopped') {
+            return '--';
         }
 
         return $recurringExpense->next_run_date?->format($dateFormat) ?? '--';

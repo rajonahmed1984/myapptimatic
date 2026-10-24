@@ -126,6 +126,17 @@ class FinanceVatController extends Controller
         $defaultRateId = old('default_tax_rate_id', $settings->default_tax_rate_id);
         $oldEnabled = old('enabled');
 
+        // The rate a new invoice issued today would get (same order InvoiceVatService uses).
+        $today = Carbon::today();
+        $defaultRate = $settings->defaultRate;
+        $todayRate = $defaultRate
+            && $defaultRate->is_active
+            && $defaultRate->effective_from?->lessThanOrEqualTo($today)
+            && (! $defaultRate->effective_to || $defaultRate->effective_to->greaterThanOrEqualTo($today))
+                ? $defaultRate
+                : TaxRate::query()->activeForDate($today)->orderByDesc('effective_from')->first();
+        $currentRatePercent = $todayRate ? (float) $todayRate->rate_percent : null;
+
         return [
             'pageTitle' => 'VAT Settings',
             'heading' => 'VAT settings',
@@ -155,8 +166,12 @@ class FinanceVatController extends Controller
                 'is_active' => (bool) old('is_active', true),
             ],
             'quick_reference' => [
+                'enabled' => (bool) $settings->enabled,
                 'mode' => ucfirst((string) $settings->tax_mode_default),
+                'mode_key' => (string) $settings->tax_mode_default,
                 'default_rate_name' => (string) ($settings->defaultRate?->name ?? 'None'),
+                'current_rate_percent' => $currentRatePercent,
+                'current_rate_id' => $todayRate?->id,
                 'invoice_label' => 'VAT',
             ],
             'currency_code' => $currencyCode,
@@ -179,7 +194,7 @@ class FinanceVatController extends Controller
                     'name' => (string) $rate->name,
                     'rate_percent_display' => $ratePercent.'%',
                     'effective_from_display' => $rate->effective_from?->format($globalDateFormat) ?? '--',
-                    'effective_to_display' => $rate->effective_to?->format($globalDateFormat) ?? 'Open',
+                    'effective_to_display' => $rate->effective_to?->format($globalDateFormat) ?? 'No end date',
                     'is_active' => (bool) $rate->is_active,
                     'status_label' => $rate->is_active ? 'Active' : 'Inactive',
                     'confirm_name' => (string) $rate->name,
@@ -197,8 +212,10 @@ class FinanceVatController extends Controller
         $globalDateFormat = (string) config('app.date_format', 'd-m-Y');
 
         // Keep aggregation database-agnostic (sqlite/mysql) by grouping in PHP.
+        // Cancelled invoices were never a supply, so their VAT is not payable.
         $invoiceRows = Invoice::query()
             ->where('currency', $currencyCode)
+            ->where('status', '!=', 'cancelled')
             ->whereNotNull('issue_date')
             ->whereNotNull('tax_amount')
             ->get(['issue_date', 'tax_amount']);
@@ -313,8 +330,16 @@ class FinanceVatController extends Controller
             return $row;
         })->values();
 
+        // Bangladesh fiscal year runs 1 July – 30 June and is written "2026-27";
+        // the numeric value stays the ending year so existing links keep working.
+        $fiscalLabel = fn (int $year): string => sprintf('%d-%02d', $year - 1, $year % 100);
+        $fiscalRange = fn (int $year): string => sprintf('Jul %d – Jun %d', $year - 1, $year);
+
+        // Always the real current month, whichever fiscal year is selected.
         $currentMonthKey = now()->format('Y-m');
-        $thisMonthTotal = (float) ($monthlyWithChange->firstWhere('month_key', $currentMonthKey)['vat_total'] ?? 0);
+        $thisMonthTotal = (float) $invoiceRows
+            ->filter(fn ($invoice) => Carbon::parse($invoice->issue_date)->format('Y-m') === $currentMonthKey)
+            ->sum(fn ($invoice) => (float) $invoice->tax_amount);
         $thisYearTotal = (float) ($yearlyWithChange->firstWhere('year', $effectiveYear)['vat_total'] ?? 0);
         $allTimeTotal = (float) $yearlyWithChange->sum('vat_total');
 
@@ -327,19 +352,22 @@ class FinanceVatController extends Controller
             'effective_year_options' => $yearOptionsSource
                 ->sortDesc()
                 ->values()
-                ->map(function (int $year) use ($effectiveYear) {
+                ->map(function (int $year) use ($effectiveYear, $fiscalLabel, $fiscalRange) {
                     return [
                         'value' => (string) $year,
-                        'label' => (string) $year,
+                        'label' => sprintf('FY %s (%s)', $fiscalLabel($year), $fiscalRange($year)),
                         'selected' => $year === $effectiveYear,
                     ];
                 })
                 ->all(),
+            'fiscal_year_label' => 'FY '.$fiscalLabel($effectiveYear),
+            'fiscal_year_range' => $fiscalRange($effectiveYear),
+            'current_month_label' => now()->format('M Y'),
             'period_start_display' => $periodStart->format($globalDateFormat),
             'period_end_display' => $periodEnd->format($globalDateFormat),
             'period_label' => sprintf(
-                '%d - %s to %s',
-                $effectiveYear,
+                'FY %s (%s to %s)',
+                $fiscalLabel($effectiveYear),
                 $periodStart->format($globalDateFormat),
                 $periodEnd->format($globalDateFormat)
             ),
@@ -352,8 +380,18 @@ class FinanceVatController extends Controller
                 'labels' => $monthlyWithChange->pluck('month_short')->values()->all(),
                 'series' => $monthlyWithChange->pluck('vat_total')->values()->all(),
             ],
-            'monthly_rows' => $monthlyWithChange->sortByDesc('month_key')->values()->all(),
-            'yearly_rows' => $yearlyWithChange->sortByDesc('year')->values()->all(),
+            // Jul → Jun, the order the fiscal year is read in.
+            'monthly_rows' => $monthlyWithChange->values()->all(),
+            'yearly_rows' => $yearlyWithChange
+                ->sortByDesc('year')
+                ->map(function (array $row) use ($fiscalLabel, $fiscalRange) {
+                    $row['label'] = 'FY '.$fiscalLabel($row['year']);
+                    $row['range'] = $fiscalRange($row['year']);
+
+                    return $row;
+                })
+                ->values()
+                ->all(),
         ];
     }
 
