@@ -20,7 +20,7 @@ class StoreClientUserRequest extends FormRequest
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -54,6 +54,7 @@ class StoreClientUserRequest extends FormRequest
     {
         return [
             'status.in' => 'Status must be active or inactive.',
+            'email.unique' => 'A customer or login with this email already exists.',
         ];
     }
 }

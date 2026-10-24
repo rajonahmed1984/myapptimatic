@@ -7,6 +7,7 @@ import Pagination from '../../../Components/Table/Pagination';
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
+    danger: 'border border-rose-300 rounded-full text-xs px-3 py-1.5 font-semibold text-rose-600 hover:bg-rose-50',
 };
 
 const initials = (value) => {
@@ -19,9 +20,33 @@ const initials = (value) => {
     return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('');
 };
 
-export default function Index({ pageTitle = 'Customers', search = '', routes = {}, customers = [], pagination = {} }) {
+export default function Index({ pageTitle = 'Customers', search = '', routes = {}, customers = [], pagination = {}, inactive_deletable_count = 0 }) {
     const [searchTerm, setSearchTerm] = useState(String(search || ''));
+    const [deleting, setDeleting] = useState(false);
     const isFirstRender = useRef(true);
+    const inactiveDeletableCount = Number(inactive_deletable_count || 0);
+
+    const submitDelete = (url, message) => {
+        if (!url || deleting || !window.confirm(message)) {
+            return;
+        }
+
+        router.delete(url, {
+            preserveScroll: true,
+            onStart: () => setDeleting(true),
+            onFinish: () => setDeleting(false),
+        });
+    };
+
+    const deleteCustomer = (customer) => submitDelete(
+        customer.routes?.destroy,
+        `Delete inactive customer ${customer.name || ''}? Their login account will also be removed. This cannot be undone.`
+    );
+
+    const deleteAllInactive = () => submitDelete(
+        routes?.destroy_inactive,
+        `Delete ${inactiveDeletableCount} inactive customer(s) that have no invoices, subscriptions, projects or orders? Their login accounts will also be removed. This cannot be undone.`
+    );
 
     useEffect(() => {
         setSearchTerm(String(search || ''));
@@ -73,13 +98,25 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                             {Number(pagination?.total || 0)} total
                         </span>
                     </div>
-                    <a
-                        href={routes?.create}
-                        data-native="true"
-                        className={BTN.primary}
-                    >
-                        New Customer
-                    </a>
+                    <div className="flex items-center gap-2">
+                        {inactiveDeletableCount > 0 && routes?.destroy_inactive ? (
+                            <button
+                                type="button"
+                                onClick={deleteAllInactive}
+                                disabled={deleting}
+                                className={`${BTN.danger} disabled:opacity-50`}
+                            >
+                                Delete Inactive ({inactiveDeletableCount})
+                            </button>
+                        ) : null}
+                        <a
+                            href={routes?.create}
+                            data-native="true"
+                            className={BTN.primary}
+                        >
+                            New Customer
+                        </a>
+                    </div>
                 </div>
 
                 <DataTable
@@ -160,6 +197,22 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                 </span>
                             ),
                         },
+                        {
+                            key: 'actions',
+                            header: '',
+                            render: (customer) => (
+                                customer.routes?.destroy ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => deleteCustomer(customer)}
+                                        disabled={deleting}
+                                        className={`${BTN.danger} whitespace-nowrap disabled:opacity-50`}
+                                    >
+                                        Delete
+                                    </button>
+                                ) : null
+                            ),
+                        },
                     ]}
                     renderMobileCard={(customer) => (
                         <MobileCard
@@ -211,6 +264,16 @@ export default function Index({ pageTitle = 'Customers', search = '', routes = {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                             </svg>
                                         </a>
+                                    )}
+                                    {customer.routes?.destroy && (
+                                        <button
+                                            type="button"
+                                            onClick={() => deleteCustomer(customer)}
+                                            disabled={deleting}
+                                            className="py-2 px-3 rounded-xl border border-rose-200 bg-rose-50 text-xs font-bold text-rose-600 hover:bg-rose-100 transition active:scale-95 disabled:opacity-50"
+                                        >
+                                            Delete
+                                        </button>
                                     )}
                                     {customer.email && (
                                         <a

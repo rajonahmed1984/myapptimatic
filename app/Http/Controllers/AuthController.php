@@ -90,12 +90,14 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email', 'unique:customers,email'],
             'password' => ['required', 'confirmed', 'min:8'],
             'phone_country' => ['nullable', 'string', 'max:6'],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'currency' => ['nullable', Rule::in(Currency::allowed())],
+        ], [
+            'email.unique' => 'An account with this email already exists. Please sign in, continue with Google, or reset your password.',
         ]);
 
         $currency = strtoupper((string) ($data['currency'] ?? Currency::DEFAULT));

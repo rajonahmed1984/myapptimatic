@@ -120,6 +120,11 @@ class SocialLoginController extends Controller
                 $userResponse = Http::withToken($accessToken)->get('https://www.googleapis.com/oauth2/v3/userinfo');
                 if ($userResponse->successful()) {
                     $userData = $userResponse->json();
+                    // Accounts are matched by email, so only trust addresses Google has verified.
+                    if (($userData['email_verified'] ?? true) === false) {
+                        return redirect(Portal::portalLoginUrl($portal))
+                            ->with('social_error', 'Your Google email address is not verified.');
+                    }
                     $email = $userData['email'] ?? null;
                     $name = $userData['name'] ?? null;
                 }
@@ -205,11 +210,28 @@ class SocialLoginController extends Controller
     private function authenticateAndRedirect(Request $request, string $email, string $name, string $portal): RedirectResponse
     {
         $email = strtolower(trim($email));
-        $user = User::where('email', $email)->first();
+        $user = User::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+            ->orderBy('id')
+            ->first();
 
         if (! $user) {
-            // Social registration: create customer and user
-            $customer = Customer::create([
+            // A customer may already exist with this email (e.g. created by an admin
+            // without a login). Reuse it instead of registering a duplicate customer.
+            $customer = Customer::query()
+                ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+                ->orderBy('id')
+                ->first();
+
+            $user = $customer?->users()
+                ->where('role', Role::CLIENT)
+                ->orderBy('id')
+                ->first();
+        }
+
+        if (! $user) {
+            // Social registration: create the customer (if needed) and its login user
+            $customer ??= Customer::create([
                 'name' => $name,
                 'email' => $email,
                 'status' => 'active',

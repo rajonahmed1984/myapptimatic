@@ -420,6 +420,7 @@ Route::middleware([
     Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])
         ->middleware(HandleInertiaRequests::class)
         ->name('customers.edit');
+    Route::delete('customers/inactive', [CustomerController::class, 'destroyInactive'])->name('customers.destroy-inactive');
     Route::resource('customers', CustomerController::class)->except(['index', 'create', 'edit', 'show']);
     Route::post('customers/{customer}/impersonate', [CustomerController::class, 'impersonate'])->name('customers.impersonate');
     Route::post('customers/{customer}/services', [CustomerController::class, 'storeService'])->name('customers.services.store');

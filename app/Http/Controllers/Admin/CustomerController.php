@@ -73,6 +73,7 @@ class CustomerController extends Controller
             ->withCount(['projectMaintenances as active_project_maintenances_count' => function ($query) {
                 $query->where('status', 'active');
             }])
+            ->withCount(['invoices', 'orders'])
             // Inactive customers sink to the end of the list (last pages).
             ->orderByRaw("CASE WHEN status = 'inactive' THEN 1 ELSE 0 END")
             ->latest()
@@ -992,7 +993,7 @@ class CustomerController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer->id)],
             'phone' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -1002,6 +1003,8 @@ class CustomerController extends Controller
             'nid_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
             'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             'client_password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'email.unique' => 'Another customer already uses this email.',
         ]);
 
         $clientPassword = $data['client_password'] ?? null;
@@ -1112,6 +1115,54 @@ class CustomerController extends Controller
                 ->with('error', 'This customer has invoices, subscriptions, projects, or orders on record and cannot be deleted. Remove or reassign that history first.');
         }
 
+        $this->deleteCustomer($customer);
+
+        return redirect()->route('admin.customers.index')
+            ->with('status', 'Customer deleted.');
+    }
+
+    /**
+     * Delete every inactive customer that has no invoices, subscriptions, projects or orders.
+     */
+    public function destroyInactive()
+    {
+        $inactiveTotal = Customer::query()->where('status', 'inactive')->count();
+        $deleted = 0;
+
+        $this->deletableInactiveCustomersQuery()
+            ->orderBy('id')
+            ->get()
+            ->each(function (Customer $customer) use (&$deleted) {
+                DB::transaction(fn () => $this->deleteCustomer($customer));
+                $deleted++;
+            });
+
+        if ($deleted === 0) {
+            return redirect()->route('admin.customers.index')
+                ->with('error', 'No inactive customers can be deleted. Inactive customers with invoices, subscriptions, projects, or orders are kept.');
+        }
+
+        $skipped = $inactiveTotal - $deleted;
+        $message = "Deleted {$deleted} inactive ".Str::plural('customer', $deleted).'.';
+        if ($skipped > 0) {
+            $message .= " {$skipped} kept because they have invoices, subscriptions, projects, or orders.";
+        }
+
+        return redirect()->route('admin.customers.index')->with('status', $message);
+    }
+
+    private function deletableInactiveCustomersQuery()
+    {
+        return Customer::query()
+            ->where('status', 'inactive')
+            ->whereDoesntHave('invoices')
+            ->whereDoesntHave('subscriptions')
+            ->whereDoesntHave('projects')
+            ->whereDoesntHave('orders');
+    }
+
+    private function deleteCustomer(Customer $customer): void
+    {
         SystemLogger::write('activity', 'Customer deleted.', [
             'customer_id' => $customer->id,
             'name' => $customer->name,
@@ -1120,9 +1171,6 @@ class CustomerController extends Controller
 
         User::where('customer_id', $customer->id)->delete();
         $customer->delete();
-
-        return redirect()->route('admin.customers.index')
-            ->with('status', 'Customer deleted.');
     }
 
     /**
@@ -1242,7 +1290,9 @@ class CustomerController extends Controller
             'routes' => [
                 'index' => route('admin.customers.index'),
                 'create' => route('admin.customers.create'),
+                'destroy_inactive' => route('admin.customers.destroy-inactive'),
             ],
+            'inactive_deletable_count' => $this->deletableInactiveCustomersQuery()->count(),
             'customers' => $customers->getCollection()
                 ->values()
                 ->map(function (Customer $customer) use ($loginStatuses, $dateFormat, $dateTimeFormat) {
@@ -1298,6 +1348,14 @@ class CustomerController extends Controller
                         'routes' => [
                             'show' => route('admin.customers.show', $customer),
                             'edit' => route('admin.customers.edit', $customer),
+                            // Only inactive customers without billing/project history can be deleted from the list.
+                            'destroy' => $effectiveStatus === 'inactive'
+                                && (int) $customer->subscriptions_count === 0
+                                && (int) $customer->projects_count === 0
+                                && (int) $customer->invoices_count === 0
+                                && (int) $customer->orders_count === 0
+                                    ? route('admin.customers.destroy', $customer)
+                                    : null,
                         ],
                     ];
                 })

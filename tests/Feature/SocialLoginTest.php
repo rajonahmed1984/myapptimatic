@@ -114,6 +114,83 @@ class SocialLoginTest extends TestCase
         $this->assertSame($customer->id, $user->customer_id);
     }
 
+    public function test_sandbox_login_reuses_existing_customer_without_login_instead_of_creating_duplicate(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Admin Created Customer',
+            'email' => 'Existing.Customer@Example.com',
+            'status' => 'active',
+        ]);
+
+        $response = $this->post(route('auth.sandbox.login', ['provider' => 'google']), [
+            'email' => 'existing.customer@example.com',
+            'name' => 'Google Name',
+            'portal' => 'web',
+        ]);
+
+        $response->assertRedirect(route('client.dashboard'));
+        $this->assertSame(1, Customer::count());
+
+        $user = User::where('customer_id', $customer->id)->first();
+        $this->assertNotNull($user);
+        $this->assertSame(Role::CLIENT, $user->role);
+        $this->assertAuthenticatedAs($user, 'web');
+    }
+
+    public function test_sandbox_login_uses_existing_customer_client_login_when_user_email_differs(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Existing Customer',
+            'email' => 'customer@example.com',
+            'status' => 'active',
+        ]);
+
+        $user = User::create([
+            'name' => 'Existing Customer',
+            'email' => 'old-login@example.com',
+            'password' => 'secret123',
+            'role' => Role::CLIENT,
+            'customer_id' => $customer->id,
+            'currency' => Currency::DEFAULT,
+            'status' => 'active',
+        ]);
+
+        $response = $this->post(route('auth.sandbox.login', ['provider' => 'google']), [
+            'email' => 'customer@example.com',
+            'portal' => 'web',
+        ]);
+
+        $response->assertRedirect(route('client.dashboard'));
+        $this->assertAuthenticatedAs($user, 'web');
+        $this->assertSame(1, Customer::count());
+        $this->assertSame(1, User::count());
+    }
+
+    public function test_oauth_callback_rejects_unverified_google_email(): void
+    {
+        config()->set('services.google.client_id', 'google-client-id');
+        config()->set('services.google.client_secret', 'google-client-secret');
+
+        session(['oauth_state_google' => 'state-123']);
+        session(['social_auth_portal' => 'web']);
+
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response(['access_token' => 'mock-access-token'], 200),
+            'https://www.googleapis.com/oauth2/v3/userinfo' => Http::response([
+                'email' => 'unverified@example.com',
+                'email_verified' => false,
+                'name' => 'Unverified',
+            ], 200),
+        ]);
+
+        $response = $this->get('/auth/google/callback?state=state-123&code=auth-code');
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHas('social_error', 'Your Google email address is not verified.');
+        $this->assertGuest('web');
+        $this->assertDatabaseMissing('users', ['email' => 'unverified@example.com']);
+    }
+
     public function test_oauth_callback_google_authenticates_successfully_with_mocked_http(): void
     {
         config()->set('services.google.client_id', 'google-client-id');
