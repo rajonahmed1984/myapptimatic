@@ -1,34 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import { statusBadgeClass as statusClass, statusBadgeClass as getProjectStatusClass } from '../../../utils/statusColors';
 
 const formatSeconds = (seconds) => {
     const total = Math.max(0, Number(seconds || 0));
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-};
-
-const statusClass = (status) => {
-    if (status === 'working') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'idle') return 'bg-amber-100 text-amber-700';
-    return 'bg-slate-100 text-slate-600';
-};
-
-const getProjectStatusClass = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s.includes('complete') || s.includes('done')) {
-        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    }
-    if (s.includes('ongoing') || s.includes('progress') || s.includes('pending') || s.includes('active')) {
-        return 'border-amber-200 bg-amber-50 text-amber-700';
-    }
-    if (s.includes('hold') || s.includes('paused') || s.includes('wait')) {
-        return 'border-orange-200 bg-orange-50 text-orange-700';
-    }
-    if (s.includes('cancel') || s.includes('reject') || s.includes('block')) {
-        return 'border-rose-200 bg-rose-50 text-rose-700';
-    }
-    return 'border-slate-200 bg-slate-100 text-slate-700';
 };
 
 export default function Index({

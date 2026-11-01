@@ -1,20 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
-
-const statusClass = (status) => {
-    switch (status) {
-        case 'active':
-            return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-        case 'suspended':
-            return 'bg-amber-100 text-amber-800 border-amber-200';
-        case 'expired':
-            return 'bg-rose-100 text-rose-800 border-rose-200';
-        case 'cancelled':
-            return 'bg-slate-100 text-slate-700 border-slate-300';
-        default:
-            return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Show({
     pageTitle = 'Product Details',

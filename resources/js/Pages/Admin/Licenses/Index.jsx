@@ -4,30 +4,11 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as licenseStatusClass } from '../../../utils/statusColors';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
-};
-
-const licenseStatusClass = (status) => {
-    if (status === 'active') {
-        return 'bg-emerald-100 text-emerald-700';
-    }
-
-    if (status === 'suspended') {
-        return 'bg-amber-100 text-amber-700';
-    }
-
-    if (status === 'expired') {
-        return 'bg-orange-100 text-orange-700';
-    }
-
-    if (status === 'revoked') {
-        return 'bg-rose-100 text-rose-700';
-    }
-
-    return 'bg-slate-100 text-slate-600';
 };
 
 const licenseKeyIndicator = (license) => {

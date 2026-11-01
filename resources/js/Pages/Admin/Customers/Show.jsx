@@ -4,15 +4,7 @@ import DatePickerField from '../../../Components/DatePickerField';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import useObjectUrlPreview from '../../../hooks/useObjectUrlPreview';
 import PasswordInput from '../../../Components/Form/PasswordInput';
-
-const statusClass = (status) => {
-    const key = String(status || '').toLowerCase();
-    if (['active', 'paid', 'accepted', 'open'].includes(key)) return 'bg-emerald-100 text-emerald-700';
-    if (['pending', 'draft', 'unpaid', 'overdue'].includes(key)) return 'bg-amber-100 text-amber-700';
-    if (['partially_paid', 'partial', 'partially paid'].includes(key)) return 'bg-blue-100 text-blue-700';
-    if (['cancelled', 'inactive', 'closed', 'reversed', 'refunded'].includes(key)) return 'bg-rose-100 text-rose-700';
-    return 'bg-slate-100 text-slate-600';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const asMoney = (amount, currency = 'USD') => `${currency} ${Number(amount || 0).toFixed(2)}`;
 
@@ -852,7 +844,7 @@ export default function Show({
                                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                                     <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-600">Projects: {project_task_summary?.projects || projects.length}</span>
                                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Pending: {project_task_summary?.pending || 0}</span>
-                                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">In progress: {project_task_summary?.in_progress || 0}</span>
+                                    <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">In progress: {project_task_summary?.in_progress || 0}</span>
                                     <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-600">Blocked: {project_task_summary?.blocked || 0}</span>
                                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {project_task_summary?.completed || 0}</span>
                                 </div>

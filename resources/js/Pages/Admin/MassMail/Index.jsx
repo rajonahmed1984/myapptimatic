@@ -20,7 +20,7 @@ export default function Index({
             case 'completed':
                 return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             case 'sending':
-                return 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse';
+                return 'bg-orange-50 text-orange-700 border-orange-200 animate-pulse';
             case 'pending':
             default:
                 return 'bg-slate-50 text-slate-600 border-slate-200';

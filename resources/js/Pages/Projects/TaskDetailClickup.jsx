@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../Components/SearchableSelect';
+import { statusBadgeClass as getStatusBadgeClass } from '../../utils/statusColors';
 
 function HiddenMethod({ method = 'PATCH' }) {
     return <input type="hidden" name="_method" value={method} />;
@@ -93,21 +94,6 @@ export default function TaskDetailClickup({
             return true;
         });
     }, [subtaskRows, activeTab]);
-
-    const getStatusBadgeClass = (status) => {
-        switch (String(status).toLowerCase()) {
-            case 'in_progress':
-                return 'bg-amber-50 text-amber-700 border-amber-200';
-            case 'completed':
-            case 'done':
-                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            case 'open':
-            case 'todo':
-            case 'pending':
-            default:
-                return 'bg-slate-50 text-slate-600 border-slate-200';
-        }
-    };
 
     const submitAssignees = async (event) => {
         event.preventDefault();
@@ -206,7 +192,7 @@ export default function TaskDetailClickup({
                                         <input type="hidden" name="_token" value={csrfToken} />
                                         <HiddenMethod method="PATCH" />
                                         {!routes?.start && <input type="hidden" name="status" value="in_progress" />}
-                                        <button type="submit" className="rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50">Inprogress</button>
+                                        <button type="submit" className="rounded-full border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 hover:bg-orange-50">Inprogress</button>
                                     </form>
                                 ) : null}
                                 {permissions?.canCompleteTask && routes?.update && !taskIsCompleted ? (

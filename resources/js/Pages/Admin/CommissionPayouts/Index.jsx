@@ -2,22 +2,11 @@ import React from 'react';
 import Pagination from '../../../Components/Table/Pagination';
 import { Head } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
-};
-
-const statusBadgeClass = (status) => {
-    if (status === 'Paid') {
-        return 'border-emerald-200 bg-emerald-100 text-emerald-700';
-    }
-
-    if (status === 'Reversed') {
-        return 'border-rose-200 bg-rose-100 text-rose-700';
-    }
-
-    return 'border-slate-200 bg-slate-100 text-slate-700';
 };
 
 export default function Index({

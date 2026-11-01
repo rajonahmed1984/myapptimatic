@@ -3,40 +3,9 @@ import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
 import CommissionStatement, { balanceTone, taka } from '../../../Components/Commission/CommissionStatement';
 import PayoutRequestActions from '../../../Components/Commission/PayoutRequestActions';
+import { statusBadgeClass as invoiceBadgeClass, statusBadgeClass as payoutStatusBadgeClass, statusBadgeClass as subscriptionStatusBadgeClass, statusBadgeClass as earningStatusBadgeClass, statusBadgeClass } from '../../../utils/statusColors';
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const invoiceBadgeClass = (status) => {
-    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
-    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key === 'overdue') return 'border-rose-200 bg-rose-50 text-rose-700';
-    if (key === 'cancelled' || key === 'canceled' || key === 'refunded') return 'border-slate-300 bg-slate-50 text-slate-700';
-    if (key === 'partially_paid' || key === 'partial') return 'border-blue-200 bg-blue-50 text-blue-700';
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-};
-const payoutStatusBadgeClass = (status) => {
-    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
-    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key === 'draft' || key === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
-    if (key === 'reversed' || key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
-    return 'border-slate-300 bg-slate-50 text-slate-700';
-};
-const subscriptionStatusBadgeClass = (status) => {
-    const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
-    if (key === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key === 'pending' || key === 'trial') return 'border-amber-200 bg-amber-50 text-amber-700';
-    if (key === 'suspended') return 'border-rose-200 bg-rose-50 text-rose-700';
-    if (key === 'cancelled' || key === 'canceled' || key === 'terminated' || key === 'expired') return 'border-slate-300 bg-slate-100 text-slate-700';
-    return 'border-sky-200 bg-sky-50 text-sky-700';
-};
-const earningStatusBadgeClass = (status) => {
-    const key = String(status || '').toLowerCase();
-    if (key === 'paid') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key === 'payable') return 'border-blue-200 bg-blue-50 text-blue-700';
-    if (key === 'earned') return 'border-indigo-200 bg-indigo-50 text-indigo-700';
-    if (key === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
-    return 'border-slate-300 bg-slate-50 text-slate-700';
-};
-
 const requestStatusLabel = {
     pending: ['Waiting', 'border-amber-200 bg-amber-50 text-amber-700'],
     paid: ['Paid', 'border-emerald-200 bg-emerald-50 text-emerald-700'],
@@ -747,15 +716,6 @@ function ActivityLogTable({ rows }) {
 function ProjectsTable({ rows }) {
     const list = Array.isArray(rows) ? rows : [];
     const normalizeStatus = (status) => String(status || '').toLowerCase().replace(/\s+/g, '_');
-    const statusBadgeClass = (status) => {
-        const key = normalizeStatus(status);
-        if (key === 'completed' || key === 'complete') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-        if (key === 'ongoing' || key === 'in_progress') return 'border-amber-200 bg-amber-50 text-amber-700';
-        if (key === 'on_hold') return 'border-slate-300 bg-slate-50 text-slate-700';
-        if (key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
-        return 'border-slate-300 bg-slate-50 text-slate-700';
-    };
-
     const projectStatusCounts = list.reduce(
         (acc, row) => {
             const key = normalizeStatus(row?.status);
@@ -774,7 +734,7 @@ function ProjectsTable({ rows }) {
                 <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Assigned Projects</div>
                 <div className="mt-2 text-4xl font-semibold leading-none text-slate-900">{list.length}</div>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Ongoing: {projectStatusCounts.ongoing}</span>
+                    <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">Ongoing: {projectStatusCounts.ongoing}</span>
                     <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-700">On hold: {projectStatusCounts.on_hold}</span>
                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {projectStatusCounts.completed}</span>
                     <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Cancelled: {projectStatusCounts.cancelled}</span>
@@ -838,7 +798,7 @@ function ProjectsTable({ rows }) {
                                                 <div className="font-medium text-slate-800">Assigned tasks: {assignedTotal}</div>
                                                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                                                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Pending: {pending}</span>
-                                                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">In progress: {inProgress}</span>
+                                                    <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">In progress: {inProgress}</span>
                                                     <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-700">Blocked: {blocked}</span>
                                                     <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {completed}</span>
                                                 </div>

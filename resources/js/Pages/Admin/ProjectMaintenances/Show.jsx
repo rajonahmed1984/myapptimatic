@@ -1,37 +1,6 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
-
-const statusBadgeClass = (status) => {
-    if (status === 'active') {
-        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    }
-
-    if (status === 'paused') {
-        return 'border-amber-200 bg-amber-50 text-amber-700';
-    }
-
-    if (status === 'cancelled') {
-        return 'border-slate-200 bg-slate-50 text-slate-600';
-    }
-
-    return 'border-slate-200 bg-slate-50 text-slate-600';
-};
-
-const invoiceStatusClass = (status) => {
-    if (status === 'paid') {
-        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    }
-
-    if (status === 'overdue') {
-        return 'border-rose-200 bg-rose-50 text-rose-700';
-    }
-
-    if (status === 'cancelled') {
-        return 'border-slate-200 bg-slate-50 text-slate-600';
-    }
-
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-};
+import { statusBadgeClass, statusBadgeClass as invoiceStatusClass } from '../../../utils/statusColors';
 
 export default function Show({ pageTitle = 'Maintenance', maintenance = null, invoices = [] }) {
     const { props } = usePage();

@@ -78,8 +78,8 @@ class ProjectTaskViewController extends Controller
             : route($projectShowRouteName, $project);
 
         $statusColors = [
-            'pending' => ['bg' => '#f1f5f9', 'text' => '#64748b'],
-            'in_progress' => ['bg' => '#fef3c7', 'text' => '#b45309'],
+            'pending' => ['bg' => '#fef3c7', 'text' => '#b45309'],
+            'in_progress' => ['bg' => '#ffedd5', 'text' => '#c2410c'],
             'blocked' => ['bg' => '#fee2e2', 'text' => '#b91c1c'],
             'completed' => ['bg' => '#d1fae5', 'text' => '#065f46'],
         ];

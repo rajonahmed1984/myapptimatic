@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 const query = (base, status) => {
     if (!status || status === 'all') return base;
@@ -55,7 +56,7 @@ export default function Index({ tickets = [], status = '', status_counts = {}, p
                         {
                             key: 'status',
                             header: 'Status',
-                            render: (ticket) => <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">{ticket.status_label}</span>,
+                            render: (ticket) => <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(ticket.status_label)}`}>{ticket.status_label}</span>,
                         },
                         { key: 'last_reply', header: 'Last Reply', cellClassName: 'text-slate-500', render: (ticket) => ticket.last_reply_at_display },
                         {

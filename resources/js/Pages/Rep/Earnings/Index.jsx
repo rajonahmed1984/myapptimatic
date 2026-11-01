@@ -4,16 +4,7 @@ import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 import CommissionStatement from '../../../Components/Commission/CommissionStatement';
-
-const statusClass = (label) => {
-    const key = String(label || '').toLowerCase().trim();
-    if (key.includes('earned')) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key.includes('payable')) return 'border-blue-200 bg-blue-50 text-blue-700';
-    if (key.includes('paid') || key.includes('complete')) return 'border-teal-200 bg-teal-50 text-teal-700';
-    if (key.includes('pending') || key.includes('progress') || key.includes('ongoing')) return 'border-amber-200 bg-amber-50 text-amber-700';
-    if (key.includes('reverse') || key.includes('cancel') || key.includes('reject')) return 'border-rose-200 bg-rose-50 text-rose-700';
-    return 'border-slate-200 bg-slate-100 text-slate-700';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Index({ statement = null, earnings = [], assigned_projects = [], pagination = {}, routes = {} }) {
     const assignedCommissionTotal = assigned_projects.reduce((sum, project) => sum + Number(project?.commission_amount || 0), 0);

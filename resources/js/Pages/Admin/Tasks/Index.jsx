@@ -2,6 +2,7 @@ import React from 'react';
 import Pagination from '../../../Components/Table/Pagination';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 const STATUS_LABELS = {
     pending: 'Open',
@@ -13,12 +14,12 @@ const STATUS_LABELS = {
 };
 
 const STATUS_CLASSES = {
-    pending: 'bg-slate-100 text-slate-600',
-    todo: 'bg-slate-100 text-slate-600',
-    in_progress: 'bg-amber-100 text-amber-700',
-    blocked: 'bg-rose-100 text-rose-700',
-    completed: 'bg-emerald-100 text-emerald-700',
-    done: 'bg-emerald-100 text-emerald-700',
+    pending: statusBadgeClass('pending'),
+    todo: statusBadgeClass('todo'),
+    in_progress: statusBadgeClass('in_progress'),
+    blocked: statusBadgeClass('blocked'),
+    completed: statusBadgeClass('completed'),
+    done: statusBadgeClass('done'),
 };
 
 const statusFilters = [

@@ -3,14 +3,7 @@ import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const statusClass = (label) => {
-    const key = String(label || '').toLowerCase();
-    if (key.includes('paid')) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key.includes('partial')) return 'border-blue-200 bg-blue-50 text-blue-700';
-    if (key.includes('unpaid') || key.includes('pending')) return 'border-amber-200 bg-amber-50 text-amber-700';
-    return 'border-slate-200 bg-slate-100 text-slate-600';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Index({ items = [], pagination = {} }) {
     return (

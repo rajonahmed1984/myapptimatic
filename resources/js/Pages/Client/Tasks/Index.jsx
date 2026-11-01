@@ -4,19 +4,7 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const statusClass = (status) => {
-    const map = {
-        pending: 'bg-slate-100 text-slate-600',
-        todo: 'bg-slate-100 text-slate-600',
-        in_progress: 'bg-amber-100 text-amber-700',
-        blocked: 'bg-rose-100 text-rose-700',
-        completed: 'bg-emerald-100 text-emerald-700',
-        done: 'bg-emerald-100 text-emerald-700',
-    };
-
-    return map[status] || 'bg-slate-100 text-slate-600';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Index({ status_filter = '', search = '', status_counts = {}, tasks = [], pagination = {}, routes = {} }) {
     const { csrf_token: csrfToken } = usePage().props;
@@ -167,7 +155,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                     <input type="hidden" name="_method" value="PATCH" />
                                                     <input type="hidden" name="status" value="in_progress" />
-                                                    <button type="submit" className="whitespace-nowrap rounded-full border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700 hover:border-amber-300">Inprogress</button>
+                                                    <button type="submit" className="whitespace-nowrap rounded-full border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 hover:border-orange-300">Inprogress</button>
                                                 </form>
                                             ) : null}
                                             {task.can_complete && task.project && status_filter !== 'completed' && !isCompleted ? (
@@ -211,7 +199,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                     <input type="hidden" name="_method" value="PATCH" />
                                                     <input type="hidden" name="status" value="in_progress" />
-                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 hover:bg-amber-100 transition active:scale-95">Inprogress</button>
+                                                    <button type="submit" className="w-full py-2 px-3 rounded-xl border border-orange-200 bg-orange-50 text-xs font-bold text-orange-700 hover:bg-orange-100 transition active:scale-95">Inprogress</button>
                                                 </form>
                                             ) : null}
                                             {task.can_complete && task.project && status_filter !== 'completed' && !isCompleted ? (

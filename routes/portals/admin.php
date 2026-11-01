@@ -539,6 +539,8 @@ Route::middleware([
         ->name('projects.overheads.index');
     Route::post('projects/{project}/overheads', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'store'])
         ->name('projects.overheads.store');
+    Route::post('projects/{project}/overheads/{overhead}/invoice', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'invoiceOne'])
+        ->name('projects.overheads.invoice-one');
     Route::delete('projects/{project}/overheads/{overhead}', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'destroy'])
         ->name('projects.overheads.destroy');
     Route::post('projects/{project}/overheads/invoice', [\App\Http\Controllers\Admin\ProjectOverheadController::class, 'invoicePending'])

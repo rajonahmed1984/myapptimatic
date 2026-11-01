@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 export default function Show({ ticket = {}, replies = [], ai_ready = false, routes = {} }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};
@@ -69,7 +70,7 @@ export default function Show({ ticket = {}, replies = [], ai_ready = false, rout
                         <div className="mt-2 text-sm text-slate-500">{ticket.ticket_no} - {ticket.customer_name} - Priority {ticket.priority_label}</div>
                     </div>
                     <div className="flex flex-col items-end gap-3 text-sm">
-                        <span className="rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold text-slate-700">{ticket.status_label}</span>
+                        <span className={`rounded-full px-4 py-1 text-xs font-semibold ${statusBadgeClass(ticket.status_label)}`}>{ticket.status_label}</span>
                         <div className="text-slate-500">Opened {ticket.created_at_display}</div>
                         <form method="POST" action={routes?.status} data-native="true">
                             <input type="hidden" name="_token" value={csrfToken} />

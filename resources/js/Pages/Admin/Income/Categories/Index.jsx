@@ -3,14 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../../Components/SearchableSelect';
 import DataTable from '../../../../Components/Table/DataTable';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
-
-const statusClass = (status) => {
-    if (status === 'active') {
-        return 'border-emerald-200 text-emerald-700 bg-emerald-50';
-    }
-
-    return 'border-slate-300 text-slate-600 bg-slate-50';
-};
+import { statusBadgeClass as statusClass } from '../../../../utils/statusColors';
 
 export default function Index({
     pageTitle = 'Income Categories',

@@ -4,13 +4,7 @@ import SearchableSelect from '../../../Components/SearchableSelect';
 import Pagination from '../../../Components/Table/Pagination';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const statusClass = (label) => {
-    const key = String(label || '').toLowerCase();
-    if (key.includes('approved') || key.includes('accepted')) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (key.includes('rejected') || key.includes('declined')) return 'border-rose-200 bg-rose-50 text-rose-700';
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Index({ leave_requests = [], leave_types = [], pagination = {}, routes = {} }) {
     const { csrf_token: csrfToken = '', errors = {} } = usePage().props || {};

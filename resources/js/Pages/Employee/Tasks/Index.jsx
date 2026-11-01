@@ -4,6 +4,7 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const statusLabel = (status) => {
     const map = {
@@ -15,18 +16,6 @@ const statusLabel = (status) => {
         done: 'Completed',
     };
     return map[status] || status;
-};
-
-const statusClass = (status) => {
-    const map = {
-        pending: 'bg-slate-100 text-slate-600',
-        todo: 'bg-slate-100 text-slate-600',
-        in_progress: 'bg-amber-100 text-amber-700',
-        blocked: 'bg-rose-100 text-rose-700',
-        completed: 'bg-emerald-100 text-emerald-700',
-        done: 'bg-emerald-100 text-emerald-700',
-    };
-    return map[status] || 'bg-slate-100 text-slate-600';
 };
 
 const query = (base, params) => {
@@ -148,7 +137,7 @@ export default function Index({ status_filter = '', search = '', status_counts =
                                                 <form method="POST" action={task?.routes?.task_start} data-native="true">
                                                     <input type="hidden" name="_token" value={csrfToken} />
                                                     <input type="hidden" name="_method" value="PATCH" />
-                                                    <button type="submit" className="rounded-full border border-amber-200 px-3 py-1 text-amber-700">In Progress</button>
+                                                    <button type="submit" className="rounded-full border border-orange-200 px-3 py-1 text-orange-700">In Progress</button>
                                                 </form>
                                             ) : null}
                                             {task.can_complete && !isCompleted ? (

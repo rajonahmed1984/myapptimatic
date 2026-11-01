@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import { statusBadgeClass as licenseStatusClass } from '../../../utils/statusColors';
 
 function LicenseCard({ license, csrf, statusClass, moveTargets = [] }) {
     const [editOpen, setEditOpen] = useState(false);
@@ -264,13 +265,6 @@ export default function Form({
     );
     const inputTokenClass = 'w-full text-xs px-4 py-1.5 h-8 rounded-[10px] border border-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-600';
     const selectTokenClass = 'w-full text-xs pl-4 pr-10 py-1.5 h-8 rounded-[10px] border border-slate-300 bg-white focus:outline-none focus:ring-1 focus:ring-teal-600';
-    const licenseStatusClass = (status) => {
-        if (status === 'active') return 'bg-emerald-100 text-emerald-700';
-        if (status === 'suspended') return 'bg-amber-100 text-amber-700';
-        if (status === 'expired') return 'bg-orange-100 text-orange-700';
-        if (status === 'revoked') return 'bg-rose-100 text-rose-700';
-        return 'bg-slate-100 text-slate-600';
-    };
     const planById = useMemo(() => {
         const map = {};
         plans.forEach((plan) => {

@@ -393,7 +393,7 @@ export default function Dashboard({
             </div>
 
             <div className="mt-3 sm:mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} tone="text-sky-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-sky-700" />
+                <SmallLinkCard href={`${routes?.projects_all}?status=ongoing`} title="Ongoing projects" value={metricValue(projectMaintenance?.projects_active)} tone="text-orange-700" className="border-orange-200 bg-orange-50 hover:border-orange-300" labelClassName="text-orange-700" />
                 <SmallLinkCard href={routes?.subscriptions_index} title="Blocked services" value={metricValue(projectMaintenance?.subscriptions_blocked)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />
                 <SmallLinkCard href={routes?.project_maintenances_index} title="Renewals (30d)" value={metricValue(projectMaintenance?.renewals_30d)} tone="text-emerald-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-emerald-700" />
                 <SmallLinkCard href={routes?.projects_all} title="Loss risk projects" value={metricValue(projectMaintenance?.projects_loss)} tone="text-rose-700" className="border-sky-200 bg-sky-50 hover:border-sky-300" labelClassName="text-rose-700" />

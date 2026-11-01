@@ -3,6 +3,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import Pagination from '../../../Components/Table/Pagination';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3.5 py-1.5 font-semibold text-white hover:bg-teal-500 shadow-sm transition',
@@ -246,7 +247,7 @@ export default function Index({
                             key: 'status',
                             header: 'Status',
                             render: (project) => (
-                                <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${project.status_class || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
+                                <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(project.status)}`}>
                                     {project.status_label}
                                 </span>
                             ),

@@ -6,22 +6,7 @@ import DataTable from '../../../../Components/Table/DataTable';
 import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
 import RowActionSheet from '../../../../Components/Mobile/RowActionSheet';
-
-const statusClass = (status) => {
-    if (status === 'active') {
-        return 'border-emerald-200 text-emerald-700 bg-emerald-50';
-    }
-
-    if (status === 'paused') {
-        return 'border-amber-200 text-amber-700 bg-amber-50';
-    }
-
-    if (status === 'stopped') {
-        return 'border-rose-200 text-rose-700 bg-rose-50';
-    }
-
-    return 'border-slate-300 text-slate-600 bg-slate-50';
-};
+import { statusBadgeClass as statusClass } from '../../../../utils/statusColors';
 
 const formatCurrency = (amount, symbol, code) => {
     const numeric = Number.parseFloat(String(amount ?? 0));

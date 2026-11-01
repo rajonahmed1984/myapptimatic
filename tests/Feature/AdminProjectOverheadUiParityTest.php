@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\ProjectOverhead;
 use App\Models\User;
@@ -80,5 +81,49 @@ class AdminProjectOverheadUiParityTest extends TestCase
             ->delete(route('admin.projects.overheads.destroy', [$project, $overhead]))
             ->assertRedirect(route('admin.projects.overheads.index', $project))
             ->assertSessionHas('success', 'Overhead deleted successfully.');
+    }
+
+    #[Test]
+    public function an_admin_can_generate_an_invoice_for_one_project_overhead(): void
+    {
+        $admin = User::factory()->create(['role' => Role::MASTER_ADMIN]);
+        $customer = Customer::create([
+            'name' => 'Single Overhead Invoice Customer',
+            'email' => 'single-overhead-invoice@example.test',
+            'status' => 'active',
+        ]);
+        $project = Project::create([
+            'name' => 'Single Overhead Invoice Project',
+            'customer_id' => $customer->id,
+            'type' => 'software',
+            'status' => 'ongoing',
+            'currency' => 'USD',
+        ]);
+        $overhead = ProjectOverhead::create([
+            'project_id' => $project->id,
+            'short_details' => 'Dedicated setup fee',
+            'amount' => 120,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.projects.overheads.invoice-one', [$project, $overhead]))
+            ->assertRedirect(route('admin.projects.show', $project))
+            ->assertSessionHas('success', 'Invoice created for overhead fee.');
+
+        $overhead->refresh();
+        $this->assertNotNull($overhead->invoice_id);
+        $this->assertDatabaseHas('invoices', [
+            'id' => $overhead->invoice_id,
+            'project_id' => $project->id,
+            'type' => 'project_overhead',
+            'subtotal' => 120,
+        ]);
+        $this->assertSame(1, Invoice::query()->where('project_id', $project->id)->count());
+
+        $this->actingAs($admin)
+            ->post(route('admin.projects.overheads.invoice-one', [$project, $overhead]))
+            ->assertSessionHas('success', 'This overhead fee already has an invoice.');
+
+        $this->assertSame(1, Invoice::query()->where('project_id', $project->id)->count());
     }
 }

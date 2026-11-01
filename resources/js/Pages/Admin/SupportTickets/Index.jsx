@@ -5,31 +5,12 @@ import Pagination from '../../../Components/Table/Pagination';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-teal-500',
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
     danger: 'bg-red-600 rounded-full text-xs px-3 py-1.5 font-semibold text-white hover:bg-red-500',
-};
-
-const statusClass = (status) => {
-    if (status === 'open') {
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    }
-
-    if (status === 'answered') {
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-    }
-
-    if (status === 'customer_reply') {
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-    }
-
-    if (status === 'closed') {
-        return 'bg-slate-200 text-slate-700 border-slate-300';
-    }
-
-    return 'bg-slate-100 text-slate-600 border-slate-200';
 };
 
 export default function Index({

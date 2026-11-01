@@ -7,11 +7,14 @@ class StatusColorHelper
     /**
      * Get standardized color scheme for status values
      * Colors based on activity level:
-     * - Green (emerald): Active, Paid, Synced, Success
-     * - Blue (blue): In-progress, Active, Running
-     * - Amber/Yellow (amber): Warning, Overdue, Pending, Stale
-     * - Rose/Red (rose): Danger, Blocked, Suspended, Failed, Cancelled
-     * - Slate (slate): Inactive, Neutral, Never synced
+     * - Green (emerald): Active, Paid, Complete, Synced, Success
+     * - Orange (orange): Ongoing, In-progress, Running
+     * - Amber/Yellow (amber): Warning, Pending, Unpaid, On hold, Stale
+     * - Blue (blue): Partially paid, Customer reply
+     * - Rose/Red (rose): Danger, Overdue, Blocked, Suspended, Failed, Cancelled
+     * - Slate (slate): Inactive, Closed, Neutral, Never synced
+     *
+     * Keep in sync with resources/js/utils/statusColors.js.
      */
     
     public static function getStatusColors(?string $status): array
@@ -45,13 +48,43 @@ class StatusColorHelper
                 'icon' => '!',
             ],
             'cancelled' => [
-                'bg' => 'bg-slate-100',
-                'text' => 'text-slate-700',
-                'color' => 'slate',
-                'dot' => 'bg-slate-400',
+                'bg' => 'bg-rose-100',
+                'text' => 'text-rose-700',
+                'color' => 'rose',
+                'dot' => 'bg-rose-500',
                 'icon' => '×',
             ],
-            
+
+            // Project and task statuses
+            'ongoing' => [
+                'bg' => 'bg-orange-100',
+                'text' => 'text-orange-700',
+                'color' => 'orange',
+                'dot' => 'bg-orange-500',
+                'icon' => '⟳',
+            ],
+            'in_progress' => [
+                'bg' => 'bg-orange-100',
+                'text' => 'text-orange-700',
+                'color' => 'orange',
+                'dot' => 'bg-orange-500',
+                'icon' => '⟳',
+            ],
+            'complete' => [
+                'bg' => 'bg-emerald-100',
+                'text' => 'text-emerald-700',
+                'color' => 'emerald',
+                'dot' => 'bg-emerald-500',
+                'icon' => '✓',
+            ],
+            'completed' => [
+                'bg' => 'bg-emerald-100',
+                'text' => 'text-emerald-700',
+                'color' => 'emerald',
+                'dot' => 'bg-emerald-500',
+                'icon' => '✓',
+            ],
+
             // Subscription statuses
             'active' => [
                 'bg' => 'bg-emerald-100',
@@ -153,10 +186,10 @@ class StatusColorHelper
                 'icon' => '✓',
             ],
             'running' => [
-                'bg' => 'bg-blue-100',
-                'text' => 'text-blue-700',
-                'color' => 'blue',
-                'dot' => 'bg-blue-500',
+                'bg' => 'bg-orange-100',
+                'text' => 'text-orange-700',
+                'color' => 'orange',
+                'dot' => 'bg-orange-500',
                 'icon' => '⟳',
             ],
             'failed' => [

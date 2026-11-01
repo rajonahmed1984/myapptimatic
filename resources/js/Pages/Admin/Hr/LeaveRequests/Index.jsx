@@ -3,15 +3,9 @@ import { Head } from '@inertiajs/react';
 import DataTable from '../../../../Components/Table/DataTable';
 import Pagination from '../../../../Components/Table/Pagination';
 import MobileCard from '../../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as statusClass } from '../../../../utils/statusColors';
 
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-const statusClass = (status) => {
-    const key = String(status || '').toLowerCase();
-    if (['approved', 'accepted'].includes(key)) return 'bg-emerald-100 text-emerald-700';
-    if (['rejected', 'declined'].includes(key)) return 'bg-rose-100 text-rose-700';
-    return 'bg-amber-100 text-amber-700';
-};
 
 export default function Index({
     pageTitle = 'Leave Requests',

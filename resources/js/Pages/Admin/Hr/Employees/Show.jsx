@@ -4,6 +4,7 @@ import DatePickerField from '../../../../Components/DatePickerField';
 import SearchableSelect from '../../../../Components/SearchableSelect';
 import { formatDate } from '../../../../utils/datetime';
 import mediaUrl from '../../../../utils/mediaUrl';
+import { statusBadgeClass as projectStatusClass } from '../../../../utils/statusColors';
 
 const currency = (value, code = 'BDT') => {
     const amount = Number(value || 0);
@@ -86,14 +87,6 @@ export default function Show({
     const tabHref = (nextTab) => {
         const base = routes?.show || '#';
         return `${base}?tab=${encodeURIComponent(nextTab)}`;
-    };
-    const projectStatusClass = (status) => {
-        const key = String(status || '').toLowerCase();
-        if (key === 'completed' || key === 'complete') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-        if (key === 'ongoing' || key === 'in_progress') return 'border-blue-200 bg-blue-50 text-blue-700';
-        if (key === 'cancelled' || key === 'canceled') return 'border-rose-200 bg-rose-50 text-rose-700';
-        if (key === 'on_hold') return 'border-amber-200 bg-amber-50 text-amber-700';
-        return 'border-slate-300 bg-slate-50 text-slate-700';
     };
     const payoutProofUrl = (id) => {
         const template = routes?.payoutProof || '';
@@ -231,7 +224,7 @@ export default function Show({
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">
                                 <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-600">Projects: {taskSummary?.projects || 0}</span>
                                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Pending: {taskSummary?.pending || 0}</span>
-                                <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">In progress: {taskSummary?.in_progress || 0}</span>
+                                <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">In progress: {taskSummary?.in_progress || 0}</span>
                                 <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-600">Blocked: {taskSummary?.blocked || 0}</span>
                                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {taskSummary?.completed || 0}</span>
                             </div>
@@ -317,7 +310,7 @@ export default function Show({
                         <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Assigned Projects</div>
                         <div className="mt-2 text-4xl font-semibold leading-none text-slate-900">{asArray(projects).length}</div>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                            <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">Ongoing: {Number(asObject(projectStatusCounts)?.ongoing || 0)}</span>
+                            <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">Ongoing: {Number(asObject(projectStatusCounts)?.ongoing || 0)}</span>
                             <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">On hold: {Number(asObject(projectStatusCounts)?.on_hold || 0)}</span>
                             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {Number(asObject(projectStatusCounts)?.completed || 0)}</span>
                             <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-700">Cancelled: {Number(asObject(projectStatusCounts)?.cancelled || asObject(projectStatusCounts)?.canceled || 0)}</span>
@@ -359,7 +352,7 @@ export default function Show({
                                                     <div className="font-medium text-slate-800">Assigned tasks: {assignedTotal}</div>
                                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                                                         <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">Pending: {Number(statusCounts.pending || 0)}</span>
-                                                        <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">In progress: {Number(statusCounts.in_progress || 0)}</span>
+                                                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">In progress: {Number(statusCounts.in_progress || 0)}</span>
                                                         <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-slate-700">Blocked: {Number(statusCounts.blocked || 0)}</span>
                                                         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Completed: {completed}</span>
                                                     </div>

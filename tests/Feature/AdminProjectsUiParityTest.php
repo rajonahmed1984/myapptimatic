@@ -51,7 +51,14 @@ class AdminProjectsUiParityTest extends TestCase
             ->get(route('admin.projects.show', $project))
             ->assertOk()
             ->assertSee('data-page=')
-            ->assertSee('Admin\\/Projects\\/Show', false);
+            ->assertSee('Admin\\/Projects\\/Show', false)
+            ->assertInertia(fn ($page) => $page
+                ->where('canCreateTask', true)
+                ->where('routes.task_create', route('admin.projects.tasks.create', $project)));
+
+        $this->actingAs($admin)
+            ->get(route('admin.projects.tasks.create', $project))
+            ->assertOk();
     }
 
     #[Test]

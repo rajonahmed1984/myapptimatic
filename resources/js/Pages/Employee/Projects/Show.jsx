@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import SearchableSelect from '../../../Components/SearchableSelect';
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const statusLabel = (status) => {
     const map = {
@@ -12,18 +13,6 @@ const statusLabel = (status) => {
         done: 'Completed',
     };
     return map[status] || status;
-};
-
-const statusClass = (status) => {
-    const map = {
-        pending: 'bg-slate-100 text-slate-600',
-        todo: 'bg-slate-100 text-slate-600',
-        in_progress: 'bg-amber-100 text-amber-700',
-        blocked: 'bg-rose-100 text-rose-700',
-        completed: 'bg-emerald-100 text-emerald-700',
-        done: 'bg-emerald-100 text-emerald-700',
-    };
-    return map[status] || 'bg-slate-100 text-slate-600';
 };
 
 const boardColumns = [
@@ -117,7 +106,7 @@ export default function Show({
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
                         <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Status</div>
-                        <div className="mt-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project?.status_label}</span></div>
+                        <div className="mt-2"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(project?.status_label)}`}>{project?.status_label}</span></div>
                         {initial_invoice ? <div className="mt-2 text-xs text-slate-500">Initial invoice: {initial_invoice.label} ({initial_invoice.status_label})</div> : null}
                     </div>
                 </div>

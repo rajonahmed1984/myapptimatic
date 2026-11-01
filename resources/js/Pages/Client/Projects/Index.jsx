@@ -2,6 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 import Pagination from '../../../Components/Table/Pagination';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 export default function Index({ projects = [], pagination = {} }) {
     return (
@@ -95,7 +96,7 @@ export default function Index({ projects = [], pagination = {} }) {
                                                     </a>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{project.status_label}</span>
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(project.status_label)}`}>{project.status_label}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-slate-400">--</td>
                                                 <td className="px-4 py-3 text-slate-400">--</td>

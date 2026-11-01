@@ -5,20 +5,10 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const BTN = {
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
-};
-
-const statusClass = (status) => {
-    if (status === 'accepted') {
-        return 'bg-emerald-100 text-emerald-700';
-    }
-    if (status === 'cancelled') {
-        return 'bg-rose-100 text-rose-700';
-    }
-
-    return 'bg-amber-100 text-amber-700';
 };
 
 export default function Index({

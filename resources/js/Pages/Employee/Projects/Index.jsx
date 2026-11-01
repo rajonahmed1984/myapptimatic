@@ -3,20 +3,7 @@ import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const getStatusClass = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s.includes('complete') || s.includes('done')) {
-        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    }
-    if (s.includes('ongoing') || s.includes('progress') || s.includes('pending') || s.includes('active')) {
-        return 'border-amber-200 bg-amber-50 text-amber-700';
-    }
-    if (s.includes('cancel') || s.includes('reject')) {
-        return 'border-rose-200 bg-rose-50 text-rose-700';
-    }
-    return 'border-slate-200 bg-slate-100 text-slate-700';
-};
+import { statusBadgeClass as getStatusClass } from '../../../utils/statusColors';
 
 export default function Index({ projects = [], pagination = {} }) {
     return (

@@ -4,22 +4,7 @@ import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const statusClass = (status) => {
-    if (status === 'approved') {
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    }
-
-    if (status === 'rejected') {
-        return 'bg-rose-100 text-rose-700 border-rose-200';
-    }
-
-    if (status === 'pending') {
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-    }
-
-    return 'bg-slate-100 text-slate-600 border-slate-200';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 export default function Index({
     pageTitle = 'Manual Payments',

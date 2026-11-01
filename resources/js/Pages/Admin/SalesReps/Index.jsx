@@ -5,12 +5,7 @@ import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
 import { BalanceBadge, taka } from '../../../Components/Commission/CommissionStatement';
-
-const statusBadgeClass = (status) => {
-    if (status === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    if (status === 'pending') return 'border-amber-200 bg-amber-50 text-amber-700';
-    return 'border-slate-300 bg-slate-50 text-slate-600';
-};
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 function ApproveButton({ href, csrf }) {
     if (!href) return null;

@@ -2346,7 +2346,8 @@ class InvoiceController extends Controller
             'paid' => 'bg-emerald-100 text-emerald-700',
             'overdue' => 'bg-rose-100 text-rose-700',
             'unpaid' => 'bg-amber-100 text-amber-700',
-            'cancelled', 'refunded' => 'bg-slate-100 text-slate-700',
+            'cancelled' => 'bg-rose-100 text-rose-700',
+            'refunded' => 'bg-slate-100 text-slate-700',
             default => 'bg-slate-100 text-slate-700',
         };
     }

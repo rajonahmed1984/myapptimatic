@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import useInertiaLiveSearch from '../../../hooks/useInertiaLiveSearch';
 import Pagination from '../../../Components/Table/Pagination';
-
-const statusClass = (status) => {
-    if (status === 'accepted') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    if (status === 'rejected') return 'bg-rose-100 text-rose-700 border-rose-200';
-    if (status === 'pending') return 'bg-amber-100 text-amber-700 border-amber-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
-};
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const TABS = [
     { key: 'pending', label: 'Pending' },

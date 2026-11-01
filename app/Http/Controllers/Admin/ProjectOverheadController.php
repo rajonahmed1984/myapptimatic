@@ -13,6 +13,7 @@ use App\Services\InvoiceVatService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -150,5 +151,68 @@ class ProjectOverheadController extends Controller
 
         return redirect()->route('admin.projects.overheads.index', $project)
             ->with('success', 'Invoice created for pending overheads.');
+    }
+
+    public function invoiceOne(Project $project, ProjectOverhead $overhead, BillingService $billingService, InvoiceVatService $vatService): RedirectResponse
+    {
+        $this->authorize('view', $project);
+
+        if ($overhead->project_id !== $project->id) {
+            abort(404);
+        }
+
+        $result = DB::transaction(function () use ($project, $overhead, $billingService, $vatService): array {
+            $lockedOverhead = $project->overheads()
+                ->whereKey($overhead->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedOverhead->invoice_id) {
+                return ['invoice' => $lockedOverhead->invoice, 'created' => false];
+            }
+
+            $subtotal = (float) ($lockedOverhead->amount ?? 0);
+            abort_if($subtotal <= 0, 422, 'The overhead amount must be greater than zero.');
+
+            $issueDate = Carbon::today();
+            $dueDays = (int) Setting::getValue('invoice_due_days');
+            $dueDate = $issueDate->copy()->addDays(max(0, $dueDays));
+            $taxData = $vatService->calculateTotals($subtotal, 0.0, $issueDate);
+
+            $invoice = Invoice::create([
+                'customer_id' => $project->customer_id,
+                'project_id' => $project->id,
+                'number' => $billingService->nextInvoiceNumber(),
+                'status' => 'unpaid',
+                'issue_date' => $issueDate->toDateString(),
+                'due_date' => $dueDate->toDateString(),
+                'subtotal' => $subtotal,
+                'tax_rate_percent' => $taxData['tax_rate_percent'],
+                'tax_mode' => $taxData['tax_mode'],
+                'tax_amount' => $taxData['tax_amount'],
+                'late_fee' => 0,
+                'total' => $taxData['total'],
+                'currency' => $project->currency,
+                'type' => 'project_overhead',
+            ]);
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'description' => sprintf('Overhead: %s', $lockedOverhead->short_details ?: 'Overhead fee'),
+                'quantity' => 1,
+                'unit_price' => $subtotal,
+                'line_total' => $subtotal,
+            ]);
+
+            $lockedOverhead->update(['invoice_id' => $invoice->id]);
+
+            return ['invoice' => $invoice, 'created' => true];
+        });
+
+        $message = $result['created']
+            ? 'Invoice created for overhead fee.'
+            : 'This overhead fee already has an invoice.';
+
+        return redirect()->route('admin.projects.show', $project)->with('success', $message);
     }
 }

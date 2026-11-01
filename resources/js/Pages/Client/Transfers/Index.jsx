@@ -2,14 +2,7 @@ import React from 'react';
 import { Head } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
-
-const xTransferStatusClass = (status) => {
-    if (status === 'pending') return 'bg-amber-100 text-amber-700';
-    if (status === 'accepted') return 'bg-teal-100 text-teal-700';
-    if (status === 'executed') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'rejected' || status === 'cancelled' || status === 'expired') return 'bg-rose-100 text-rose-700';
-    return 'bg-slate-100 text-slate-600';
-};
+import { statusBadgeClass as xTransferStatusClass } from '../../../utils/statusColors';
 
 export default function Index({ pageTitle = 'Incoming Transfers', transfers = [] }) {
     return (

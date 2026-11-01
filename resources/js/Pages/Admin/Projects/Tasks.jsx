@@ -1,6 +1,7 @@
 import React from 'react';
 import Pagination from '../../../Components/Table/Pagination';
 import { Head, usePage } from '@inertiajs/react';
+import { statusBadgeClass } from '../../../utils/statusColors';
 
 const STATUS_LABELS = {
     pending: 'Open',
@@ -12,12 +13,12 @@ const STATUS_LABELS = {
 };
 
 const STATUS_CLASSES = {
-    pending: 'bg-slate-100 text-slate-600',
-    todo: 'bg-slate-100 text-slate-600',
-    in_progress: 'bg-amber-100 text-amber-700',
-    blocked: 'bg-rose-100 text-rose-700',
-    completed: 'bg-emerald-100 text-emerald-700',
-    done: 'bg-emerald-100 text-emerald-700',
+    pending: statusBadgeClass('pending'),
+    todo: statusBadgeClass('todo'),
+    in_progress: statusBadgeClass('in_progress'),
+    blocked: statusBadgeClass('blocked'),
+    completed: statusBadgeClass('completed'),
+    done: statusBadgeClass('done'),
 };
 
 const BOARD_COLUMNS = [
@@ -250,10 +251,10 @@ export default function Tasks({
                     </a>
                     <a
                         href={statusUrls?.in_progress}
-                        className={`rounded-2xl border px-4 py-3 transition ${statusFilter === 'in_progress' ? 'border-sky-300 bg-sky-100 ring-1 ring-sky-200' : 'border-sky-200 bg-sky-50 hover:border-sky-300'}`}
+                        className={`rounded-2xl border px-4 py-3 transition ${statusFilter === 'in_progress' ? 'border-orange-300 bg-orange-100 ring-1 ring-orange-200' : 'border-orange-200 bg-orange-50 hover:border-orange-300'}`}
                     >
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-sky-600">In Progress</div>
-                        <div className="mt-1 text-lg font-semibold text-sky-900">{Number(summary.in_progress || 0)}</div>
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-orange-600">In Progress</div>
+                        <div className="mt-1 text-lg font-semibold text-orange-900">{Number(summary.in_progress || 0)}</div>
                     </a>
                     <a
                         href={statusUrls?.completed}

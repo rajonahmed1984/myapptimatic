@@ -2,21 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as statusClass } from '../../../utils/statusColors';
 
 const BTN = {
     primary: 'bg-teal-600 rounded-full text-xs px-3.5 py-1.5 font-semibold text-white hover:bg-teal-500 shadow-sm transition',
-};
-
-const statusClass = (status) => {
-    if (status === 'active') {
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    }
-
-    if (status === 'inactive') {
-        return 'bg-slate-200 text-slate-700 border-slate-300';
-    }
-
-    return 'bg-slate-100 text-slate-600 border-slate-200';
 };
 
 export default function Index({ pageTitle = 'Plans', routes = {}, plans = [] }) {

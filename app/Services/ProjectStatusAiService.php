@@ -164,7 +164,8 @@ class ProjectStatusAiService
         $budgetWithOverhead = $budget + $overhead;
         $salesRepTotal = (float) ($project->sales_rep_total ?? 0);
         $contractTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
-        $payoutsTotal = $salesRepTotal + $contractTotal;
+        $salaryCostTotal = app(ProjectSalaryCostService::class)->forProject($project)['total'];
+        $payoutsTotal = $salesRepTotal + $contractTotal + $salaryCostTotal;
         $initialPayment = (float) ($project->initial_payment_amount ?? 0);
         $remainingBudget = $budgetWithOverhead - $initialPayment;
         $profit = $budgetWithOverhead - $payoutsTotal;
@@ -270,6 +271,7 @@ class ProjectStatusAiService
                 'remaining_budget' => round($remainingBudget, 2),
                 'sales_rep_total' => round($salesRepTotal, 2),
                 'contract_total' => round($contractTotal, 2),
+                'salary_cost_total' => round($salaryCostTotal, 2),
                 'payouts_total' => round($payoutsTotal, 2),
                 'profit' => round($profit, 2),
                 'profitability' => $profitabilityLabel,

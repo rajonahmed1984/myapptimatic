@@ -3,18 +3,11 @@ import { Head, usePage } from '@inertiajs/react';
 import DataTable from '../../../Components/Table/DataTable';
 import Pagination from '../../../Components/Table/Pagination';
 import MobileCard from '../../../Components/Mobile/MobileCard';
+import { statusBadgeClass as xTransferStatusClass } from '../../../utils/statusColors';
 
 const BTN = {
     secondary: 'border border-slate-300 rounded-full text-xs px-3 py-1.5 font-semibold text-slate-600 hover:border-teal-300 hover:text-teal-600',
     danger: 'rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500',
-};
-
-const xTransferStatusClass = (status) => {
-    if (status === 'pending') return 'bg-amber-100 text-amber-700';
-    if (status === 'accepted') return 'bg-teal-100 text-teal-700';
-    if (status === 'executed') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'rejected' || status === 'cancelled' || status === 'expired') return 'bg-rose-100 text-rose-700';
-    return 'bg-slate-100 text-slate-600';
 };
 
 export default function Index({ pageTitle = 'Ownership Transfers', transfers = [], pagination = {} }) {

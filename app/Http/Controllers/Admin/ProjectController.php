@@ -677,6 +677,7 @@ class ProjectController extends Controller
             'statuses' => self::STATUSES,
             'types' => self::TYPES,
             'taskStatuses' => self::TASK_STATUSES,
+            'canCreateTask' => (bool) ($user?->can('createTask', $project) ?? false),
             'tasks' => $tasks
                 ->through(fn (ProjectTask $task) => $this->serializeProjectTaskPreview($project, $task))
                 ->values(),
@@ -700,6 +701,7 @@ class ProjectController extends Controller
                 'complete' => route('admin.projects.complete', $project),
                 'invoices' => route('admin.projects.invoices', $project),
                 'tasks' => route('admin.projects.tasks.index', $project),
+                'task_create' => route('admin.projects.tasks.create', $project),
                 'chat' => route('admin.projects.chat', $project),
                 'ai_summary' => route('admin.projects.ai', $project),
                 'invoice_remaining' => route('admin.projects.invoice-remaining', $project),
@@ -1450,6 +1452,7 @@ class ProjectController extends Controller
                 'start' => $project->start_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'expected_end' => $project->expected_end_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
                 'due' => $project->due_date?->format(config('app.date_format', 'd-m-Y')) ?? '--',
+                'duration_days' => app(\App\Services\ProjectSalaryCostService::class)->durationDays($project),
             ],
             'files' => [
                 'contract' => $project->contract_file_path ? [
@@ -1463,6 +1466,16 @@ class ProjectController extends Controller
             ],
             'team' => [
                 'employees' => $project->employees->pluck('name')->filter()->values(),
+                'employee_costs' => collect($financials['employee_costs'] ?? [])
+                    ->map(fn (array $row) => [
+                        'id' => $row['id'],
+                        'name' => $row['name'],
+                        'is_contract' => $row['is_contract'],
+                        'days' => $row['days'],
+                        'shared_days' => $row['shared_days'],
+                        'salary_display' => $row['salary'] !== null ? sprintf('%s %s', $project->currency, number_format($row['salary'], 2)) : null,
+                    ])
+                    ->values(),
                 'sales_reps' => $project->salesRepresentatives
                     ->map(function ($rep) use ($project) {
                         $amount = (float) ($rep->pivot?->amount ?? 0);
@@ -1488,6 +1501,7 @@ class ProjectController extends Controller
                 'profitable' => $profit >= 0,
                 'budget_amount_display' => $project->budget_amount !== null ? sprintf('%s %s', $project->currency, number_format((float) $project->budget_amount, 2)) : '--',
                 'employee_salary_total_display' => sprintf('%s %s', $project->currency, number_format($employeeSalaryTotal, 2)),
+                'employee_cost_not_counted' => $financials['employee_cost_not_counted'] ?? [],
                 'sales_rep_total_display' => sprintf('%s %s', $project->currency, number_format($salesRepTotal, 2)),
                 'profit_display' => sprintf('%s %s', $project->currency, number_format($profit, 2)),
                 // Contract lines preserved for existing assertions.
@@ -1602,6 +1616,7 @@ class ProjectController extends Controller
             'status_label' => $statusLabel,
             'invoice_number' => $invoice ? '#'.($invoice->number ?: $invoice->id) : '--',
             'invoice_show_route' => $invoice ? route('admin.invoices.show', ['invoice' => $invoice->id]) : null,
+            'invoice_route' => $invoice ? null : route('admin.projects.overheads.invoice-one', ['project' => $project, 'overhead' => $overhead]),
         ];
     }
 
@@ -1627,9 +1642,9 @@ class ProjectController extends Controller
     private function projectStatusClass(string $status): string
     {
         return match ($status) {
-            'ongoing' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+            'ongoing' => 'bg-orange-100 text-orange-700 ring-orange-200',
             'hold' => 'bg-amber-100 text-amber-700 ring-amber-200',
-            'complete' => 'bg-blue-100 text-blue-700 ring-blue-200',
+            'complete' => 'bg-emerald-100 text-emerald-700 ring-emerald-200',
             'cancel' => 'bg-rose-100 text-rose-700 ring-rose-200',
             default => 'bg-slate-100 text-slate-700 ring-slate-200',
         };
@@ -2188,7 +2203,8 @@ PROMPT;
         $overhead = $project->overhead_total;
         $budgetWithOverhead = $budget + $overhead;
         $salesRepTotal = (float) ($project->sales_rep_total ?? 0);
-        $employeeSalaryTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0);
+        $salaryCost = app(\App\Services\ProjectSalaryCostService::class)->forProject($project);
+        $employeeSalaryTotal = (float) ($project->contract_amount ?? $project->contract_employee_total_earned ?? 0) + $salaryCost['total'];
         $payoutsTotal = $salesRepTotal + $employeeSalaryTotal;
         $initialPayment = (float) ($project->initial_payment_amount ?? 0);
 
@@ -2220,6 +2236,8 @@ PROMPT;
             'initial_payment' => $initialPayment,
             'paid_payment' => $paidPayment,
             'employee_salary_total' => $employeeSalaryTotal,
+            'employee_cost_not_counted' => $salaryCost['not_counted'],
+            'employee_costs' => $salaryCost['employees'],
             'sales_rep_total' => $salesRepTotal,
             'payouts_total' => $payoutsTotal,
             'remaining_budget' => $remainingBudget,
