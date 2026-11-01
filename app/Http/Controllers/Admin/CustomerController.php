@@ -308,7 +308,7 @@ class CustomerController extends Controller
         if ($tab === 'projects') {
             $customer->loadMissing([
                 'projects.invoices' => function ($query) {
-                    $query->select(['id', 'project_id', 'type', 'status', 'total']);
+                    $query->select(['id', 'project_id', 'type', 'status', 'subtotal', 'total']);
                 },
             ]);
 
@@ -1400,16 +1400,20 @@ class CustomerController extends Controller
         $overhead = (float) ($project->overhead_total ?? 0);
         $budgetWithOverhead = $budget + $overhead;
 
+        // Same basis as the project page: overhead invoices count, and subtotals
+        // keep VAT out because the budget is pre-VAT.
+        $billedTypes = ['project_initial_payment', 'project_remaining_budget', 'project_overhead'];
+
         if ($project->relationLoaded('invoices')) {
             $paidPayment = (float) $project->invoices
-                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+                ->whereIn('type', $billedTypes)
                 ->where('status', 'paid')
-                ->sum(fn ($invoice) => (float) ($invoice->total ?? 0));
+                ->sum(fn ($invoice) => (float) ($invoice->subtotal ?? 0));
         } else {
             $paidPayment = (float) $project->invoices()
-                ->whereIn('type', ['project_initial_payment', 'project_remaining_budget'])
+                ->whereIn('type', $billedTypes)
                 ->where('status', 'paid')
-                ->sum('total');
+                ->sum('subtotal');
         }
 
         return [

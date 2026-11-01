@@ -2222,7 +2222,7 @@ PROMPT;
         // Overhead line items not yet on an invoice are billed through the
         // overhead flow, so they must not be offered as remaining budget too.
         $uninvoicedOverheads = (float) $project->overheads
-            ->whereNull('invoice_id')
+            ->filter(fn ($overhead) => ! $overhead->invoice)
             ->sum(fn ($overhead) => (float) ($overhead->amount ?? 0));
 
         $remainingBudget = $budgetWithOverhead - $paidPayment;

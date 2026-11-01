@@ -25,7 +25,7 @@ class ProjectOverheadController extends Controller
 
         $overheads = $project->overheads()->with('invoice')->latest('created_at')->get();
 
-        $unpaidCount = $overheads->whereNull('invoice_id')->count();
+        $unpaidCount = $overheads->filter(fn (ProjectOverhead $overhead) => ! $overhead->invoice)->count();
 
         return Inertia::render('Admin/Projects/Overheads/Index', [
             'pageTitle' => 'Overhead fees',
@@ -101,12 +101,17 @@ class ProjectOverheadController extends Controller
     {
         $this->authorize('view', $project);
 
-        $pending = $project->overheads()->whereNull('invoice_id')->get();
+        $pending = $project->overheads()->whereDoesntHave('invoice')->get();
         $subtotal = (float) $pending->sum(fn ($o) => (float) ($o->amount ?? 0));
 
         if ($pending->isEmpty() || $subtotal <= 0) {
             return redirect()->route('admin.projects.overheads.index', $project)
                 ->with('status', 'No pending overheads to invoice.');
+        }
+
+        if ($subtotal > $this->unbilledAmount($project)) {
+            return redirect()->route('admin.projects.overheads.index', $project)
+                ->with('error', 'No invoice created: the project budget and overheads are already fully billed, so these fees would be charged twice.');
         }
 
         $issueDate = Carbon::today();
@@ -167,12 +172,17 @@ class ProjectOverheadController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedOverhead->invoice_id) {
+            // An invoice_id can outlive its invoice, which then counts as not invoiced.
+            if ($lockedOverhead->invoice) {
                 return ['invoice' => $lockedOverhead->invoice, 'created' => false];
             }
 
             $subtotal = (float) ($lockedOverhead->amount ?? 0);
             abort_if($subtotal <= 0, 422, 'The overhead amount must be greater than zero.');
+
+            if ($subtotal > $this->unbilledAmount($project)) {
+                return ['invoice' => null, 'created' => false, 'already_billed' => true];
+            }
 
             $issueDate = Carbon::today();
             $dueDays = (int) Setting::getValue('invoice_due_days');
@@ -209,10 +219,28 @@ class ProjectOverheadController extends Controller
             return ['invoice' => $invoice, 'created' => true];
         });
 
+        if ($result['already_billed'] ?? false) {
+            return redirect()->route('admin.projects.show', $project)
+                ->with('error', 'No invoice created: the project budget and overheads are already fully billed, so this fee would be charged twice.');
+        }
+
         $message = $result['created']
             ? 'Invoice created for overhead fee.'
             : 'This overhead fee already has an invoice.';
 
         return redirect()->route('admin.projects.show', $project)->with('success', $message);
+    }
+
+    /**
+     * Budget plus overheads that no paid or open invoice has billed yet.
+     */
+    private function unbilledAmount(Project $project): float
+    {
+        $billed = (float) $project->invoices()
+            ->whereIn('type', ['project_initial_payment', 'project_remaining_budget', 'project_overhead'])
+            ->whereIn('status', ['paid', 'unpaid', 'overdue'])
+            ->sum('subtotal');
+
+        return round((float) ($project->total_budget ?? 0) + (float) $project->overhead_total - $billed, 2);
     }
 }

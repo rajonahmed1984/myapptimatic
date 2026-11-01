@@ -66,6 +66,14 @@ class Invoice extends Model
         'late_fee_applied_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // Some databases have no foreign key on this column to clear the link.
+        static::deleted(function (Invoice $invoice): void {
+            ProjectOverhead::query()->where('invoice_id', $invoice->id)->update(['invoice_id' => null]);
+        });
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
