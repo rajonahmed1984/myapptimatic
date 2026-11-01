@@ -10,10 +10,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\CompletesRegistrationOtp;
 use Tests\TestCase;
 
 class SalesRepReferralSignupTest extends TestCase
 {
+    use CompletesRegistrationOtp;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -30,7 +32,7 @@ class SalesRepReferralSignupTest extends TestCase
     #[Test]
     public function a_sales_rep_signs_up_on_the_shared_register_page_and_waits_for_approval(): void
     {
-        $response = $this->post(route('register.store'), [
+        $this->post(route('register.store'), [
             'account_type' => 'sales_rep',
             'name' => 'Rahim Rep',
             'email' => 'rahim@example.com',
@@ -38,7 +40,9 @@ class SalesRepReferralSignupTest extends TestCase
             'phone' => '01711000000',
             'password' => 'secret-pass',
             'password_confirmation' => 'secret-pass',
-        ]);
+        ])->assertRedirect(route('register.otp.show'));
+
+        $response = $this->completeRegistrationOtp();
 
         $response->assertRedirect(route('login'));
         $response->assertSessionHas('status');
@@ -109,7 +113,9 @@ class SalesRepReferralSignupTest extends TestCase
 
         $this->withCookie(CaptureSalesReferral::COOKIE, $rep->referral_code)
             ->post(route('register.store'), $this->customerPayload('buyer@example.com'))
-            ->assertRedirect(route('client.dashboard'));
+            ->assertRedirect(route('register.otp.show'));
+
+        $this->completeRegistrationOtp()->assertRedirect(route('client.dashboard'));
 
         $customer = Customer::where('email', 'buyer@example.com')->sole();
         $this->assertSame($rep->id, $customer->referred_by_sales_rep_id);
@@ -135,6 +141,8 @@ class SalesRepReferralSignupTest extends TestCase
 
         $this->withCookie(CaptureSalesReferral::COOKIE, $rep->referral_code)
             ->post(route('register.store'), $this->customerPayload('plain@example.com'));
+
+        $this->completeRegistrationOtp();
 
         $customer = Customer::where('email', 'plain@example.com')->sole();
         $this->assertNull($customer->referred_by_sales_rep_id);

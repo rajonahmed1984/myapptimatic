@@ -12,6 +12,9 @@ const ShieldCheckIcon = ({ className = 'w-10 h-10' }) => (
 
 export default function VerifyOtp({
     pageTitle = 'Security Verification',
+    heading = 'Two-Factor Authentication',
+    submitLabel = 'Verify Code & Sign In',
+    cancelLabel = 'Back to login',
     portal = 'web',
     email = '',
     isLocal = false,
@@ -107,7 +110,7 @@ export default function VerifyOtp({
                             <ShieldCheckIcon className="w-8 h-8 text-teal-600" />
                         </div>
 
-                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Two-Factor Authentication</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{heading}</h1>
                         <p className="mt-2 text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
                             We&apos;ve sent a 6-digit one-time code to
                             {email ? (
@@ -187,7 +190,7 @@ export default function VerifyOtp({
                                 {processing ? (
                                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
-                                    'Verify Code & Sign In'
+                                    submitLabel
                                 )}
                             </button>
                         </form>
@@ -209,7 +212,7 @@ export default function VerifyOtp({
                                 href={routes?.cancel || '/login'}
                                 className="text-slate-400 hover:text-slate-600 transition-colors text-[11px]"
                             >
-                                Back to login
+                                {cancelLabel}
                             </a>
                         </div>
                     </div>

@@ -315,9 +315,11 @@ export default function Register({ form = {}, routes = {}, recaptcha = {}, refer
                                 action={recaptcha?.action || 'REGISTER'}
                             />
 
-                            <div className="pt-2 flex justify-center">
+                            <p className="text-center text-[11px] text-slate-500">We will email you a 6-digit code to verify your address and finish registration.</p>
+
+                            <div className="flex justify-center">
                                 <SubmitButton className="h-10 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold tracking-wide transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg active:scale-[0.98] max-w-xs">
-                                    {isSalesRep ? 'Apply as sales representative' : 'Create account'}
+                                    {isSalesRep ? 'Continue application' : 'Continue'}
                                 </SubmitButton>
                             </div>
                         </form>

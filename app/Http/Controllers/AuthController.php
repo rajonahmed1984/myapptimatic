@@ -2,20 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\Role;
-use App\Models\Customer;
-use App\Models\SalesRepresentative;
 use App\Models\User;
-use App\Services\AdminNotificationService;
-use App\Services\ClientNotificationService;
+use App\Services\AuthFresh\LoginOtpService;
+use App\Services\AuthFresh\RegistrationOtpService;
 use App\Services\RecaptchaService;
 use App\Services\SalesReferralService;
-use App\Support\SystemLogger;
 use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -68,12 +63,14 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Validate the sign-up and email a code. The account is only created by
+     * RegistrationOtpController once that code comes back.
+     */
     public function register(
         Request $request,
-        ClientNotificationService $clientNotifications,
-        AdminNotificationService $adminNotifications,
         RecaptchaService $recaptcha,
-        SalesReferralService $referrals
+        RegistrationOtpService $registrationOtp
     ): RedirectResponse {
         $accountType = $this->accountType($request);
 
@@ -83,10 +80,31 @@ class AuthController extends Controller
 
         $recaptcha->assertValid($request, 'REGISTER');
 
-        if ($accountType === self::ACCOUNT_SALES_REP) {
-            return $this->registerSalesRep($request, $adminNotifications);
+        $data = $accountType === self::ACCOUNT_SALES_REP
+            ? $this->validateSalesRep($request)
+            : $this->validateCustomer($request);
+
+        if ($registrationOtp->sendLimitReached($data['email'])) {
+            return back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->withErrors(['email' => 'Too many codes requested for this email. Please try again later.']);
         }
 
+        $sent = $registrationOtp->start($request, $accountType, $data, $this->redirectTarget($request));
+
+        if (! $sent && ! LoginOtpService::isLocalDev()) {
+            $registrationOtp->forget($request);
+
+            return back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->withErrors(['email' => 'We could not send the verification email. Please check the address and try again.']);
+        }
+
+        return redirect()->route('register.otp.show');
+    }
+
+    private function validateCustomer(Request $request): array
+    {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -101,54 +119,19 @@ class AuthController extends Controller
         ]);
 
         $currency = strtoupper((string) ($data['currency'] ?? Currency::DEFAULT));
-        if (! Currency::isAllowed($currency)) {
-            $currency = Currency::DEFAULT;
-        }
 
-        $phone = $this->normalizePhone($data['phone'] ?? null, $data['phone_country'] ?? null);
-
-        $customer = Customer::create([
+        return [
             'name' => $data['name'],
             'company_name' => $data['company_name'] ?? null,
             'email' => $data['email'],
-            'phone' => $phone,
-            'address' => $data['address'] ?? null,
-            'status' => 'active',
-        ]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
             'password' => $data['password'],
-            'role' => Role::CLIENT,
-            'customer_id' => $customer->id,
-            'currency' => $currency,
-        ]);
-
-        $referrals->creditNewCustomer($customer, $request);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        $clientNotifications->sendClientSignup($customer);
-
-        $redirect = $this->redirectTarget($request);
-
-        if ($redirect) {
-            return redirect($redirect)
-                ->with('status', 'Welcome! Your account is ready.');
-        }
-
-        return redirect()
-            ->route('client.dashboard')
-            ->with('status', 'Welcome! Your account is ready.');
+            'phone' => $this->normalizePhone($data['phone'] ?? null, $data['phone_country'] ?? null),
+            'address' => $data['address'] ?? null,
+            'currency' => Currency::isAllowed($currency) ? $currency : Currency::DEFAULT,
+        ];
     }
 
-    /**
-     * A sales rep signs up to a pending account; an admin approves it before
-     * the rep can sign in or share a referral link.
-     */
-    private function registerSalesRep(Request $request, AdminNotificationService $adminNotifications): RedirectResponse
+    private function validateSalesRep(Request $request): array
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -158,37 +141,12 @@ class AuthController extends Controller
             'phone' => ['required', 'string', 'max:50'],
         ]);
 
-        $rep = DB::transaction(function () use ($data) {
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => $data['password'],
-                'role' => Role::SALES,
-            ]);
-
-            return SalesRepresentative::create([
-                'user_id' => $user->id,
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $this->normalizePhone($data['phone'], $data['phone_country'] ?? null),
-                'status' => SalesRepresentative::STATUS_PENDING,
-            ]);
-        });
-
-        SystemLogger::write('activity', 'Sales representative signed up.', [
-            'sales_representative_id' => $rep->id,
-            'email' => $rep->email,
-        ], null, $request->ip());
-
-        $adminNotifications->sendSalesRepSignup($rep);
-
-        $message = 'Thanks for signing up as a sales representative. An admin will review your account; you can sign in here once it is approved.';
-
-        if (Auth::guard('web')->check()) {
-            return redirect()->route('client.dashboard')->with('status', $message);
-        }
-
-        return redirect()->route('login')->with('status', $message);
+        return [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'phone' => $this->normalizePhone($data['phone'], $data['phone_country'] ?? null),
+        ];
     }
 
     private function accountType(Request $request): string

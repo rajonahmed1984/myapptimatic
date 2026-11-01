@@ -8,10 +8,12 @@ use App\Support\Currency;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Tests\Concerns\CompletesRegistrationOtp;
 use Tests\TestCase;
 
 class CurrencySelectionTest extends TestCase
 {
+    use CompletesRegistrationOtp;
     use RefreshDatabase;
 
     /**
@@ -28,6 +30,8 @@ class CurrencySelectionTest extends TestCase
             'phone' => '1234567890',
             'currency' => 'BDT',
         ]);
+
+        $response = $this->completeRegistrationOtp();
 
         $this->assertAuthenticated();
         $user = User::where('email', 'test@example.com')->first();
@@ -50,6 +54,8 @@ class CurrencySelectionTest extends TestCase
             'currency' => 'BDT',
         ]);
 
+        $response = $this->completeRegistrationOtp();
+
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'noterms@example.com']);
         $response->assertRedirect();
@@ -68,6 +74,8 @@ class CurrencySelectionTest extends TestCase
             'currency' => 'USD',
         ]);
 
+        $response = $this->completeRegistrationOtp();
+
         $this->assertAuthenticated();
         $user = User::where('email', 'test.usd@example.com')->first();
         $this->assertEquals('USD', $user->currency);
@@ -84,6 +92,8 @@ class CurrencySelectionTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
+
+        $response = $this->completeRegistrationOtp();
 
         $this->assertAuthenticated();
         $user = User::where('email', 'test.default@example.com')->first();

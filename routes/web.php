@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\IncomeCategoryController as AdminIncomeCategoryCo
 use App\Http\Controllers\Admin\IncomeController as AdminIncomeController;
 use App\Http\Controllers\AuthFresh\PortalLoginController;
 use App\Http\Controllers\AuthFresh\LoginOtpController;
+use App\Http\Controllers\AuthFresh\RegistrationOtpController;
 use App\Http\Controllers\AuthFresh\SocialLoginController;
 use App\Http\Controllers\AuthFresh\LogoutController;
 use App\Http\Controllers\Auth\RolePasswordResetController;
@@ -270,6 +271,17 @@ Route::middleware(['nocache'])->group(function () {
         ->middleware(HandleInertiaRequests::class)
         ->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
+    Route::get('/register/verify', [RegistrationOtpController::class, 'show'])
+        ->middleware(HandleInertiaRequests::class)
+        ->name('register.otp.show');
+    Route::post('/register/verify', [RegistrationOtpController::class, 'verify'])
+        ->middleware(['throttle:10,1'])
+        ->name('register.otp.verify');
+    Route::post('/register/verify/resend', [RegistrationOtpController::class, 'resend'])
+        ->middleware(['throttle:3,1'])
+        ->name('register.otp.resend');
+    Route::get('/register/verify/cancel', [RegistrationOtpController::class, 'cancel'])
+        ->name('register.otp.cancel');
 });
 
 Route::middleware(['nocache'])->group(function () {
