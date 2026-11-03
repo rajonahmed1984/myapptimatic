@@ -8,18 +8,22 @@ use App\Models\User;
 use App\Enums\Role;
 use App\Support\Currency;
 use App\Support\AuthFresh\Portal;
+use App\Services\AuthFresh\LoginOtpService;
 use App\Services\AuthFresh\LoginService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 class SocialLoginController extends Controller
 {
+    private const PORTAL = 'web';
+
     public function __construct(
         private readonly LoginService $loginService
     ) {
@@ -36,13 +40,18 @@ class SocialLoginController extends Controller
         }
 
         $portal = Portal::normalize($request->query('portal', 'web'));
+        if ($portal !== self::PORTAL) {
+            return redirect(Portal::portalLoginUrl($portal))
+                ->with('social_error', 'Google login is only available for client accounts.');
+        }
+
         $request->session()->put('social_auth_portal', $portal);
         $request->session()->put('social_auth_provider', $provider);
 
         $config = config("services.{$provider}");
 
         if (empty($config['client_id'])) {
-            if (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug')) {
+            if ($this->sandboxAvailable()) {
                 return redirect()->route('auth.sandbox', ['provider' => $provider, 'portal' => $portal]);
             }
 
@@ -79,11 +88,12 @@ class SocialLoginController extends Controller
     public function callback(Request $request, string $provider)
     {
         $provider = strtolower($provider);
-        $portal = $request->session()->pull('social_auth_portal', 'web');
+        $request->session()->forget('social_auth_portal');
+        $portal = self::PORTAL;
         $sessionState = $request->session()->pull("oauth_state_{$provider}");
 
         $state = $request->input('state');
-        if (empty($state) || $state !== $sessionState) {
+        if (! is_string($state) || ! is_string($sessionState) || ! hash_equals($sessionState, $state)) {
             return redirect(Portal::portalLoginUrl($portal))
                 ->with('social_error', 'Invalid state parameter. Authentication failed.');
         }
@@ -121,7 +131,7 @@ class SocialLoginController extends Controller
                 if ($userResponse->successful()) {
                     $userData = $userResponse->json();
                     // Accounts are matched by email, so only trust addresses Google has verified.
-                    if (($userData['email_verified'] ?? true) === false) {
+                    if (($userData['email_verified'] ?? false) !== true) {
                         return redirect(Portal::portalLoginUrl($portal))
                             ->with('social_error', 'Your Google email address is not verified.');
                     }
@@ -138,8 +148,10 @@ class SocialLoginController extends Controller
             return $this->authenticateAndRedirect($request, $email, $name ?? explode('@', $email)[0], $portal);
 
         } catch (\Exception $e) {
+            Log::warning('Google login failed.', ['error' => $e->getMessage()]);
+
             return redirect(Portal::portalLoginUrl($portal))
-                ->with('social_error', 'An error occurred during authentication: ' . $e->getMessage());
+                ->with('social_error', 'Google sign-in did not complete. Please try again.');
         }
     }
 
@@ -153,11 +165,9 @@ class SocialLoginController extends Controller
             abort(404);
         }
 
-        if (! (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug'))) {
-            abort(403, 'Sandbox mode is only available in local or testing environments.');
-        }
+        abort_unless($this->sandboxAvailable(), 403, 'Sandbox mode is only available in local or testing environments.');
 
-        $portal = Portal::normalize($request->query('portal', 'web'));
+        $portal = self::PORTAL;
 
         $users = User::query()
             ->where('role', Role::CLIENT)
@@ -183,9 +193,7 @@ class SocialLoginController extends Controller
             abort(404);
         }
 
-        if (! (app()->environment(['local', 'testing', 'development', 'dev', 'staging']) || config('app.debug'))) {
-            abort(403, 'Sandbox mode is only available in local or testing environments.');
-        }
+        abort_unless($this->sandboxAvailable(), 403, 'Sandbox mode is only available in local or testing environments.');
 
         $data = $request->validate([
             'email' => ['required', 'email'],
@@ -193,7 +201,7 @@ class SocialLoginController extends Controller
             'portal' => ['required', 'string'],
         ]);
 
-        $portal = Portal::normalize($data['portal']);
+        $portal = self::PORTAL;
         $email = strtolower(trim($data['email']));
         $name = trim($data['name'] ?? '');
 
@@ -202,6 +210,14 @@ class SocialLoginController extends Controller
         }
 
         return $this->authenticateAndRedirect($request, $email, $name, $portal);
+    }
+
+    /**
+     * The sandbox signs in without a password, so it must never run on a live server.
+     */
+    private function sandboxAvailable(): bool
+    {
+        return app()->environment('testing') || LoginOtpService::isLocalDev();
     }
 
     /**
@@ -246,6 +262,13 @@ class SocialLoginController extends Controller
                 'currency' => Currency::DEFAULT,
                 'status' => 'active',
             ]);
+        }
+
+        // Google stands in for the password only. It must not skip an admin's
+        // emailed code or let a staff account into a portal it does not belong to.
+        if ($this->loginService->validatePortalAccess($portal, $user) !== null) {
+            return redirect(Portal::portalLoginUrl($portal))
+                ->with('social_error', 'This account cannot use Google login. Please sign in with your password.');
         }
 
         $guard = Portal::guard($portal);

@@ -197,7 +197,7 @@ class RolePasswordResetController extends Controller
             && (bool) User::query()->where('email', $email)->first()?->canUseSalesPortalAsClient();
 
         try {
-            $status = $resetsClientLogin
+            $resetsClientLogin
                 ? Password::broker()->sendResetLink(['email' => $email])
                 : Password::broker($config['broker'])->sendResetLink([
                     'email' => $email,
@@ -211,10 +211,6 @@ class RolePasswordResetController extends Controller
             ]);
 
             return back()->withErrors(['email' => 'Unable to send the reset link right now. Please try again later.']);
-        }
-
-        if ($status === Password::RESET_THROTTLED) {
-            return back()->withErrors(['email' => __($status)]);
         }
 
         return back()->with('status', 'If your email is in our system, we have sent a reset link.');

@@ -104,6 +104,19 @@ class Portal
         return 'web';
     }
 
+    /**
+     * Only a path on this site. Browsers read both // and /\ as the start of
+     * another host, and drop tabs and newlines before they parse a URL.
+     */
+    public static function safeRedirect(mixed $redirect): ?string
+    {
+        if (! is_string($redirect) || preg_match('/[\x00-\x1F\x7F]/', $redirect)) {
+            return null;
+        }
+
+        return preg_match('#^/(?![/\\\\])#', $redirect) ? $redirect : null;
+    }
+
     public static function setPortal(Request $request, string $portal): void
     {
         $request->session()->put(self::SESSION_KEY, self::normalize($portal));

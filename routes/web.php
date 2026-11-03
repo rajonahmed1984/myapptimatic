@@ -252,15 +252,21 @@ Route::middleware([\App\Http\Middleware\RedirectIfAuthenticated::class . ':web',
     Route::get('/admin/forgot-password', [PasswordResetController::class, 'requestAdmin'])
         ->middleware(HandleInertiaRequests::class)
         ->name('admin.password.request');
-    Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])->name('admin.password.email');
+    Route::post('/admin/forgot-password', [PasswordResetController::class, 'emailAdmin'])
+        ->middleware('throttle:5,1')
+        ->name('admin.password.email');
     Route::get('/forgot-password', [PasswordResetController::class, 'request'])
         ->middleware(HandleInertiaRequests::class)
         ->name('password.request');
-    Route::post('/forgot-password', [PasswordResetController::class, 'email'])->name('password.email');
+    Route::post('/forgot-password', [PasswordResetController::class, 'email'])
+        ->middleware('throttle:5,1')
+        ->name('password.email');
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])
         ->middleware(HandleInertiaRequests::class)
         ->name('password.reset');
-    Route::post('/reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+    Route::post('/reset-password', [PasswordResetController::class, 'update'])
+        ->middleware('throttle:5,1')
+        ->name('password.update');
 });
 
 // One sign-up page for customers and sales reps. It is outside the guest group
@@ -303,7 +309,9 @@ Route::get('/auth/{provider}/callback', [SocialLoginController::class, 'callback
 Route::get('/auth/sandbox/{provider}', [SocialLoginController::class, 'sandbox'])
     ->middleware(HandleInertiaRequests::class)
     ->name('auth.sandbox');
-Route::post('/auth/sandbox/{provider}/login', [SocialLoginController::class, 'sandboxLogin'])->name('auth.sandbox.login');
+Route::post('/auth/sandbox/{provider}/login', [SocialLoginController::class, 'sandboxLogin'])
+    ->middleware('throttle:20,1')
+    ->name('auth.sandbox.login');
 
 require __DIR__ . '/portals/employee.php';
 

@@ -22,7 +22,8 @@ class LoginOtpService
 
     public static function isLocalDev(): bool
     {
-        return app()->environment('local') || config('app.env') === 'local';
+        // A fixed code on a live server would undo the check, so it needs both a local env and debug mode.
+        return config('app.env') === 'local' && (bool) config('app.debug');
     }
 
     /**
@@ -75,7 +76,7 @@ class LoginOtpService
         $expectedHash = (string) $user->login_otp_code;
         $submittedHash = hash('sha256', $submittedOtp);
 
-        if (hash_equals($expectedHash, $submittedHash) || hash_equals($expectedHash, $submittedOtp)) {
+        if (hash_equals($expectedHash, $submittedHash)) {
             $this->clearOtp($user);
             return true;
         }

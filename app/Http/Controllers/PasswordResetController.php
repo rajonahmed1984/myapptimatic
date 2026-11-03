@@ -6,6 +6,7 @@ use App\Enums\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -61,7 +62,7 @@ class PasswordResetController extends Controller
             };
 
             try {
-                $status = Password::broker($broker)->sendResetLink([
+                Password::broker($broker)->sendResetLink([
                     'email' => $user->email,
                 ]);
             } catch (\Throwable $exception) {
@@ -74,15 +75,10 @@ class PasswordResetController extends Controller
                     ->withInput($request->only('email'))
                     ->withErrors(['email' => 'Unable to send the reset link right now. Please try again later.']);
             }
-        } else {
-            $status = Password::INVALID_USER;
         }
 
-        if ($status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
-        }
-
-        return back()->withInput($request->only('email'))->withErrors(['email' => __($status)]);
+        // The answer is the same whether or not the address has an account.
+        return back()->with('status', 'If your email is in our system, we have sent a reset link.');
     }
 
     public function emailAdmin(Request $request)
@@ -120,7 +116,9 @@ class PasswordResetController extends Controller
             function ($user, string $password) {
                 $user->forceFill([
                     'password' => $password,
-                ])->save();
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
             }
         );
 

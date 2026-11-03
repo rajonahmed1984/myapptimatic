@@ -206,6 +206,7 @@ class SocialLoginTest extends TestCase
             ], 200),
             'https://www.googleapis.com/oauth2/v3/userinfo' => Http::response([
                 'email' => 'googleuser@example.com',
+                'email_verified' => true,
                 'name' => 'Google User',
             ], 200),
         ]);

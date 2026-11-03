@@ -7,6 +7,7 @@ use App\Services\AuthFresh\LoginOtpService;
 use App\Services\AuthFresh\RegistrationOtpService;
 use App\Services\RecaptchaService;
 use App\Services\SalesReferralService;
+use App\Support\AuthFresh\Portal;
 use App\Support\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -200,16 +201,6 @@ class AuthController extends Controller
 
     private function redirectTarget(Request $request): ?string
     {
-        $redirect = $request->input('redirect');
-
-        if (! is_string($redirect) || $redirect === '') {
-            return null;
-        }
-
-        if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-            return $redirect;
-        }
-
-        return null;
+        return Portal::safeRedirect($request->input('redirect'));
     }
 }

@@ -70,6 +70,15 @@ class LoginOtpController extends Controller
         }
 
         $portal = (string) ($pending['portal'] ?? 'web');
+
+        // The account must still qualify when the code comes back, not only when it was sent.
+        if ($this->loginService->validatePortalAccess($portal, $user) !== null) {
+            $request->session()->forget('login.pending_otp');
+
+            return redirect(Portal::portalLoginUrl($portal))
+                ->withErrors(['email' => 'Access restricted for this account.']);
+        }
+
         $throttleKey = 'verify-otp:' . $user->id;
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -98,7 +107,7 @@ class LoginOtpController extends Controller
         $request->session()->regenerate();
         $request->session()->forget('impersonator_id');
         Portal::setPortal($request, $portal);
-        RateLimiter::clear(LoginService::limiterKey($request, $portal, $user->email));
+        LoginService::clearLoginAttempts($request, $portal, $user->email);
 
         $targetUrl = $safeRedirect ?: $this->loginService->defaultRedirectUrlFor($portal, $user);
 

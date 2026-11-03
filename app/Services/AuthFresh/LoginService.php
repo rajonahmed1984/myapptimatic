@@ -19,6 +19,8 @@ class LoginService
 {
     public const LOGIN_MAX_ATTEMPTS = 5;
 
+    public const LOGIN_MAX_ATTEMPTS_PER_EMAIL = 20;
+
     public function __construct(
         private readonly RecaptchaService $recaptcha,
         private readonly LoginOtpService $otpService
@@ -31,15 +33,21 @@ class LoginService
             $portal = Portal::fromRequest($request);
             $key = self::limiterKey($request, $portal, (string) $request->input('email', ''));
 
-            return Limit::perMinute(self::LOGIN_MAX_ATTEMPTS)
-                ->by($key)
-                ->response(function (Request $request) use ($portal) {
-                    return redirect(Portal::portalLoginUrl($portal))
-                        ->withErrors([
-                            'email' => 'Too many login attempts. Please try again in 60 seconds.',
-                        ])
-                        ->withInput($request->only('email'));
-                });
+            $tooMany = function (Request $request) use ($portal) {
+                return redirect(Portal::portalLoginUrl($portal))
+                    ->withErrors([
+                        'email' => 'Too many login attempts. Please try again in 60 seconds.',
+                    ])
+                    ->withInput($request->only('email'));
+            };
+
+            return [
+                Limit::perMinute(self::LOGIN_MAX_ATTEMPTS)->by($key)->response($tooMany),
+                // Holds even when the client can change the IP we see through X-Forwarded-For.
+                Limit::perMinute(self::LOGIN_MAX_ATTEMPTS_PER_EMAIL)
+                    ->by(implode('|', ['login-email', $portal, strtolower(trim((string) $request->input('email', '')))]))
+                    ->response($tooMany),
+            ];
         });
     }
 
@@ -121,7 +129,7 @@ class LoginService
         // A real sign-in ends any impersonation still recorded in this session.
         $request->session()->forget('impersonator_id');
         Portal::setPortal($request, $portal);
-        RateLimiter::clear(self::limiterKey($request, $portal, $credentials['email']));
+        self::clearLoginAttempts($request, $portal, $credentials['email']);
 
         $safeRedirect = $this->safeRedirectTarget($request);
         if ($safeRedirect !== null) {
@@ -168,6 +176,14 @@ class LoginService
     }
 
     /**
+     * The throttle middleware stores its counter under this hash of the limiter name and key.
+     */
+    public static function clearLoginAttempts(Request $request, string $portal, string $email): void
+    {
+        RateLimiter::clear(md5('login'.self::limiterKey($request, $portal, $email)));
+    }
+
+    /**
      * The portal an account signs in to from the shared customer login.
      */
     private function portalForAccount(string $portal, string $email): string
@@ -181,7 +197,7 @@ class LoginService
         return $role === Role::SALES ? 'sales' : $portal;
     }
 
-    private function validatePortalAccess(string $portal, mixed $user): ?string
+    public function validatePortalAccess(string $portal, mixed $user): ?string
     {
         if (! $user instanceof User) {
             return 'Access restricted for this account.';
@@ -244,16 +260,7 @@ class LoginService
 
     private function safeRedirectTarget(Request $request): ?string
     {
-        $redirect = $request->input('redirect');
-        if (! is_string($redirect) || $redirect === '') {
-            return null;
-        }
-
-        if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-            return $redirect;
-        }
-
-        return null;
+        return Portal::safeRedirect($request->input('redirect'));
     }
 
     private function logFailure(
